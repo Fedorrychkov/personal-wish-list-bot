@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Ctx } from 'nestjs-telegraf'
-import { WishEntity } from 'src/entities'
+import { MAIN_SCENE_KEYBOARDS } from 'src/constants/keyboards'
+import { UserDocument, WishDocument, WishEntity } from 'src/entities'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { WISH_CALLBACK_DATA } from '../wish/constants'
@@ -11,50 +12,103 @@ export class SharedService {
   private logger = new Logger(SharedService.name)
   constructor(private readonly wishEntity: WishEntity) {}
 
-  // @SceneEnter()
   async enterWishScene(@Ctx() ctx: SceneContext) {
-    // TODO: Надо разобраться с навигацией в боте
     await ctx.reply('Управляйте своим списком желаний', {
       reply_markup: {
-        inline_keyboard: [[{ text: 'Добавить в список по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }]],
+        inline_keyboard: [
+          [{ text: 'Добавить в список по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
+          [{ text: 'Получить весь список желаний', callback_data: WISH_CALLBACK_DATA.getAllWishList }],
+          [{ text: 'Поделиться списком желаний', callback_data: WISH_CALLBACK_DATA.shareWishList }],
+          [
+            {
+              text: 'Посмотреть чужой список желаний по никнейму',
+              callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
+            },
+          ],
+        ],
       },
     })
-    // await ctx.editMessageText('Управляйте своим списком желаний', {
-    //   reply_markup: {
-    //     inline_keyboard: [[{ text: 'Добавить в список по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }]],
-    //   },
-    // })
+  }
+
+  async showWishList(@Ctx() ctx: SceneContext, wishList: WishDocument[], sharedUser?: UserDocument) {
+    const userId = `${ctx.from.id}`
+
+    await ctx.reply(
+      sharedUser?.id
+        ? `Список желаний @${sharedUser.username} (Вы так же можете добавить понравившееся желание в свой список):`
+        : 'Текущий список ваших желаний:',
+    )
+
+    for await (const wish of wishList) {
+      await ctx.replyWithHTML(
+        `${wish.name}`,
+        wish.userId === userId
+          ? {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${wish?.id}` },
+                    { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${wish?.id}` },
+                  ],
+                ],
+              },
+            }
+          : {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: 'Добавить в свой список',
+                      callback_data: `${WISH_CALLBACK_DATA.copy_wish_item} ${wish?.id}`,
+                    },
+                  ],
+                ],
+              },
+            },
+      )
+    }
+
+    await ctx?.reply('Не теряйтесь, дублирую основные команды', {
+      reply_markup: {
+        inline_keyboard: MAIN_SCENE_KEYBOARDS,
+      },
+    })
   }
 
   async addWishItemByLink(@Ctx() ctx: SceneContext, options: { url: string }) {
-    const { url } = options || {}
-    const openGraph = await getUrlMetadata(url)
-    this.logger.log('[onAddByUrl.OpenGraph.payload]', { openGraph, url })
+    try {
+      const { url } = options || {}
+      const openGraph = await getUrlMetadata(url)
+      this.logger.log('[onAddByUrl.OpenGraph.payload]', { openGraph, url })
 
-    const payload = this.wishEntity.getValidProperties({
-      userId: `${ctx?.from?.id}`,
-      name: openGraph?.title,
-      description: openGraph?.description,
-      imageUrl: openGraph?.imageUrl,
-      link: openGraph?.wishUrl,
-    })
+      const payload = this.wishEntity.getValidProperties({
+        userId: `${ctx?.from?.id}`,
+        name: openGraph?.title || 'Не удалось получить название',
+        description: openGraph?.description || 'Не удалось получить описание',
+        imageUrl: openGraph?.imageUrl || 'Не удалось получить изображение',
+        link: openGraph?.wishUrl || url,
+      })
 
-    const response = await this.wishEntity.createOrUpdate(payload)
+      const response = await this.wishEntity.createOrUpdate(payload)
 
-    await ctx.replyWithHTML(
-      `${response.name}\nС изображением: ${response?.imageUrl}\n\nдобавлен в ваш список желаний!`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${response?.id}` },
-              { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${response?.id}` },
+      await ctx.replyWithHTML(
+        `${response.name}\nС изображением: ${response?.imageUrl}\n\nдобавлен в ваш список желаний!`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${response?.id}` },
+                { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${response?.id}` },
+              ],
+              [{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
             ],
-            [{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
-          ],
+          },
         },
-      },
-    )
+      )
+    } catch (error) {
+      this.logger.error('[onAddByUrl]', error, { data: error?.response?.data })
+      await ctx.reply('Что то пошло не так, попробуйте еще раз')
+    }
   }
 
   async showEditWishItem(

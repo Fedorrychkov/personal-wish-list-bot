@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common'
-import { UserEntity } from 'src/entities'
+import { UserModule, WishModule } from 'src/modules'
 import { SharedSceneModule } from 'src/scenes/shared'
 
 import { MainSceneService } from './main.scene.service'
 
 @Module({
-  imports: [SharedSceneModule],
+  imports: [UserModule, WishModule, SharedSceneModule],
   controllers: [],
-  providers: [UserEntity, MainSceneService],
+  providers: [MainSceneService],
   exports: [],
 })
 export class MainSceneModule {}

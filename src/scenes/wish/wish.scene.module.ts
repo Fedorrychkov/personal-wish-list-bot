@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common'
 import { UserModule, WishModule } from 'src/modules'
 import { SharedSceneModule } from 'src/scenes/shared'
 
-import { WishByLinkSceneService } from './byLink'
+import { GetAnotherWishListByUserNameceneService } from './another-wish-list'
+import { WishByLinkSceneService } from './by-link'
 import {
   WishDescriptionEditSceneService,
   WishImageUrlEditSceneService,
@@ -21,6 +22,7 @@ import { WishMainService } from './wish.scene.service'
     WishDescriptionEditSceneService,
     WishLinkEditSceneService,
     WishImageUrlEditSceneService,
+    GetAnotherWishListByUserNameceneService,
   ],
   exports: [],
 })

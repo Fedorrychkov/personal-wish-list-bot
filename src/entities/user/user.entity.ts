@@ -4,6 +4,7 @@ import firebase from 'firebase-admin'
 import { time } from 'src/helpers'
 
 import { UserDocument } from './user.document'
+import { UserFilter } from './user.types'
 
 @Injectable()
 export class UserEntity {
@@ -38,11 +39,16 @@ export class UserEntity {
     return query
   }
 
-  async findAll(): Promise<UserDocument[]> {
+  async findAll(filter: UserFilter): Promise<UserDocument[]> {
     const list: UserDocument[] = []
     let query = this.findAllGenerator()
 
     query = query.orderBy('createdAt', 'desc')
+
+    if (filter?.username) {
+      query = query.where('username', '==', filter.username)
+    }
+
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))
 

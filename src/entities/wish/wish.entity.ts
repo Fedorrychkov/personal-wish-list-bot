@@ -4,6 +4,7 @@ import firebase from 'firebase-admin'
 import { getUniqueId, time } from 'src/helpers'
 
 import { WishDocument } from './wish.document'
+import { WishFilter } from './wish.types'
 
 @Injectable()
 export class WishEntity {
@@ -56,11 +57,16 @@ export class WishEntity {
     return query
   }
 
-  async findAll(): Promise<WishDocument[]> {
+  async findAll(filter: WishFilter): Promise<WishDocument[]> {
     const list: WishDocument[] = []
     let query = this.findAllGenerator()
 
     query = query.orderBy('createdAt', 'desc')
+
+    if (filter?.userId) {
+      query = query.where('userId', '==', filter?.userId)
+    }
+
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))
 

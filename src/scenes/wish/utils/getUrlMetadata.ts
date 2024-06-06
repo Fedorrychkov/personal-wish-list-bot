@@ -24,19 +24,21 @@ export const getUrlMetadata = async (url: string) => {
     }
 
     return openGraph
-  } catch (error) {
-    throw error
-
+  } catch {
     // Fallback after developed
-    const response = await ogClient.getSiteInfo(url)
+    try {
+      const response = await ogClient.getSiteInfo(url)
 
-    const openGraph = {
-      title: response?.hybridGraph?.title || response?.openGraph?.title,
-      description: response?.hybridGraph?.description || response?.openGraph?.description,
-      imageUrl: response?.hybridGraph?.image || response?.openGraph?.image?.url,
-      wishUrl: url,
+      const openGraph = {
+        title: response?.hybridGraph?.title || response?.openGraph?.title,
+        description: response?.hybridGraph?.description || response?.openGraph?.description,
+        imageUrl: response?.hybridGraph?.image || response?.openGraph?.image?.url,
+        wishUrl: url,
+      }
+
+      return openGraph
+    } catch {
+      return undefined
     }
-
-    return openGraph
   }
 }

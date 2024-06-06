@@ -11,6 +11,7 @@ import {
   WISH_SCENE_EDIT_IMAGE_URL_SCENE,
   WISH_SCENE_EDIT_LINK_SCENE,
   WISH_SCENE_EDIT_NAME_SCENE,
+  WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE,
 } from './constants'
 
 @Update()
@@ -20,11 +21,14 @@ export class WishMainService {
 
   @Action(WISH_CALLBACK_DATA.addNewByLink)
   async editItemName(@Ctx() ctx: SceneContext) {
-    await ctx.editMessageText('Отправьте в следующем сообщении ссылку на желаемое', {
-      reply_markup: {
-        inline_keyboard: [[{ text: 'Назад', callback_data: WISH_CALLBACK_DATA.openWishScene }]],
+    await ctx.editMessageText(
+      'Пришлите в ответном сообщении ссылку на желание.\nМы постараемся добавить его в ваш список с автозаполнением Названия, Описания и картинки.\nЕсли что-то пойдет не так, вы всегда сможете отредактировать желание в ручную',
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: 'Назад', callback_data: WISH_CALLBACK_DATA.openWishScene }]],
+        },
       },
-    })
+    )
 
     await ctx.scene.enter(WISH_SCENE_BY_LINK_NAME)
   }
@@ -61,11 +65,25 @@ export class WishMainService {
     await ctx.scene.enter(WISH_SCENE_EDIT_DESCRIPTION_SCENE, { wish, messageId: ctx?.msgId })
   }
 
+  @Action(new RegExp(WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname))
+  async getAnotherUserWishListByNickname(@Ctx() ctx: SceneContext) {
+    await ctx.scene.enter(WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE, { messageId: ctx?.msgId })
+  }
+
   @Action(new RegExp(WISH_CALLBACK_DATA.editWishItem))
   async editWishItem(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
 
     await this.sharedService.showEditWishItem(ctx, { wishId: id, type: 'edit' })
+  }
+
+  @Action(new RegExp(WISH_CALLBACK_DATA.getAllWishList))
+  async getAllWishList(@Ctx() ctx: SceneContext) {
+    const userId = `${ctx.from.id}`
+
+    const items = await this.wishEntity.findAll({ userId })
+
+    await this.sharedService.showWishList(ctx, items)
   }
 
   @Action(new RegExp(WISH_CALLBACK_DATA.removeWishItem))
@@ -88,6 +106,49 @@ export class WishMainService {
     await ctx.editMessageText(`${wish?.name}\nУспешно удален!`, {
       reply_markup: {
         inline_keyboard: [[{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }]],
+      },
+    })
+  }
+
+  @Action(new RegExp(WISH_CALLBACK_DATA.copy_wish_item))
+  async copyWishItem(@Ctx() ctx: SceneContext) {
+    const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
+
+    if (!id) {
+      await ctx.reply(`${ctx?.text}\n\nОшибка копирования, попробуйте еще раз`, {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: 'Попробовать еще раз', callback_data: `${WISH_CALLBACK_DATA.copy_wish_item} ${id}` }],
+          ],
+        },
+      })
+
+      return
+    }
+
+    const wish = await this.wishEntity.get(id)
+
+    const userId = `${ctx.from.id}`
+
+    const payload = this.wishEntity.getValidProperties({
+      ...wish,
+      id: null,
+      userId,
+      isBooked: false,
+      updatedAt: null,
+    })
+
+    const response = await this.wishEntity.createOrUpdate(payload)
+
+    await ctx.replyWithHTML(`Желание: ${response.name}\nУспешно добавлено в ваш список желаний!`, {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${response?.id}` },
+            { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${response?.id}` },
+          ],
+          [{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
+        ],
       },
     })
   }
