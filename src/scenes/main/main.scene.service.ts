@@ -108,7 +108,7 @@ export class MainSceneService {
 
     ctx.reply(`
 Отправьте ссылку на свой вишлист, чтобы поделиться им:
-https://t.me/@EasyPersonalWishList_bot?start=${START_PAYLOAD_KEYS.shareByUserName}${username}
+https://t.me/@personal_wish_list_bot?start=${START_PAYLOAD_KEYS.shareByUserName}${username}
 `)
   }
 
