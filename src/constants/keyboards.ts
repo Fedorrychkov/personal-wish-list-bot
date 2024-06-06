@@ -10,3 +10,8 @@ export const MAIN_SCENE_KEYBOARDS = [
     },
   ],
 ]
+
+export const SCENE_NAVIGATION_KEYBOARDS = [
+  ...MAIN_SCENE_KEYBOARDS,
+  [{ text: 'Назад', callback_data: WISH_CALLBACK_DATA.back }],
+]

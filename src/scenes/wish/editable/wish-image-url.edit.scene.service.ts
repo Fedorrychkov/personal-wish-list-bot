@@ -1,6 +1,7 @@
 import { Timestamp } from '@google-cloud/firestore'
 import { Injectable, Logger } from '@nestjs/common'
 import { Ctx, Hears, On, Scene, SceneEnter } from 'nestjs-telegraf'
+import { SCENE_NAVIGATION_KEYBOARDS } from 'src/constants/keyboards'
 import { WishDocument, WishEntity } from 'src/entities'
 import { time } from 'src/helpers'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
@@ -38,7 +39,11 @@ export class WishImageUrlEditSceneService {
     const imageUrl = await ctx.telegram.getFileLink(imageId)
 
     const handleUpdateLastMessage = async (text: string) => {
-      await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text)
+      await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, {
+        reply_markup: {
+          inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+        },
+      })
     }
 
     if (!imageUrl) {

@@ -11,6 +11,7 @@ export const WISH_CALLBACK_DATA = {
   shareWishList: 'share_wish_list',
   copy_wish_item: 'copy_wish_item',
   get_another_user_wish_list_by_nickname: 'get_another_user_wish_list_by_nickname',
+  back: 'back',
 }
 
 export const WISH_SCENE_BY_LINK_NAME = 'wishByLinkScene'

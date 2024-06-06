@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
+import { Action, Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
+import { SCENE_NAVIGATION_KEYBOARDS } from 'src/constants/keyboards'
 import { UserEntity, WishEntity } from 'src/entities'
 import { SharedService } from 'src/scenes/shared'
 import { SceneContext } from 'telegraf/typings/scenes'
 
-import { WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE } from '../constants'
+import { WISH_CALLBACK_DATA, WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE } from '../constants'
 
 @Scene(WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE)
 @Injectable()
@@ -24,18 +25,31 @@ export class GetAnotherWishListByUserNameceneService {
     await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', 'Введите никнейм для поиска, например @muzltoff')
   }
 
+  @Action(new RegExp(WISH_CALLBACK_DATA.back))
+  async removeWishItem(@Ctx() ctx: SceneContext) {
+    await ctx.scene.leave()
+  }
+
   @Hears(/.*/)
   async editName(@Ctx() ctx: SceneContext) {
     const sharedUserName = (ctx?.text || '')?.trim?.()?.toLowerCase?.()?.replace?.('@', '') || ''
 
     if (!sharedUserName) {
-      await ctx.reply('Произошла ошибка получения никнейма, попробуйте ввести еще раз, в формате @username')
+      await ctx.reply('Произошла ошибка получения никнейма, попробуйте ввести еще раз, в формате @username', {
+        reply_markup: {
+          inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+        },
+      })
 
       return
     }
 
     if (sharedUserName.length > 600) {
-      await ctx.reply('Никнейм не должен превышать 600 символов')
+      await ctx.reply('Никнейм не должен превышать 600 символов', {
+        reply_markup: {
+          inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+        },
+      })
 
       return
     }
@@ -45,6 +59,11 @@ export class GetAnotherWishListByUserNameceneService {
     if (!sharedUser) {
       await ctx.reply(
         `Пользователя по никнейму: ${ctx?.text} нет в системе, попробуйте ввести другой никнейм, либо проверьте корректность никнейма`,
+        {
+          reply_markup: {
+            inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+          },
+        },
       )
 
       return
