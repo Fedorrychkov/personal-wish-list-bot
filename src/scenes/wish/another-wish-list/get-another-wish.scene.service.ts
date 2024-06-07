@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Action, Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
-import { SCENE_NAVIGATION_KEYBOARDS } from 'src/constants/keyboards'
+import { MAIN_SCENE_KEYBOARDS, SCENE_NAVIGATION_KEYBOARDS } from 'src/constants/keyboards'
 import { UserEntity, WishEntity } from 'src/entities'
 import { SharedService } from 'src/scenes/shared'
 import { SceneContext } from 'telegraf/typings/scenes'
@@ -31,7 +31,7 @@ export class GetAnotherWishListByUserNameceneService {
   }
 
   @Hears(/.*/)
-  async editName(@Ctx() ctx: SceneContext) {
+  async getAnotherWishList(@Ctx() ctx: SceneContext) {
     const sharedUserName = (ctx?.text || '')?.trim?.()?.toLowerCase?.()?.replace?.('@', '') || ''
 
     if (!sharedUserName) {
@@ -77,6 +77,16 @@ export class GetAnotherWishListByUserNameceneService {
 
     if (sharedUser) {
       const items = await handleGetSharedUserWishList()
+
+      if (!items?.length) {
+        await ctx?.reply(`Список желаний пользователя с ником ${ctx?.text} пуст`, {
+          reply_markup: {
+            inline_keyboard: MAIN_SCENE_KEYBOARDS,
+          },
+        })
+
+        return
+      }
 
       await this.sharedService.showWishList(ctx, items, sharedUser)
 

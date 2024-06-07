@@ -80,8 +80,9 @@ export class WishEntity {
     return {
       id: document.id || getUniqueId(),
       userId: document.userId,
-      isBooked: document.isBooked || false,
       name: document.name || null,
+      isBooked: document.isBooked || false,
+      bookedUserId: document.bookedUserId || null,
       description: document.description || null,
       link: document.link || null,
       imageUrl: document.imageUrl || null,

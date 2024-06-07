@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Ctx } from 'nestjs-telegraf'
-import { MAIN_SCENE_KEYBOARDS } from 'src/constants/keyboards'
+import { getOwnerWishItemKeyboard, getSharedWishItemKeyboard, MAIN_SCENE_KEYBOARDS } from 'src/constants/keyboards'
 import { UserDocument, WishDocument, WishEntity } from 'src/entities'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -13,21 +13,67 @@ export class SharedService {
   constructor(private readonly wishEntity: WishEntity) {}
 
   async enterWishScene(@Ctx() ctx: SceneContext) {
-    await ctx.reply('Управляйте своим списком желаний', {
+    await ctx.reply('Управление желаниями', {
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Добавить в список по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
-          [{ text: 'Получить весь список желаний', callback_data: WISH_CALLBACK_DATA.getAllWishList }],
-          [{ text: 'Поделиться списком желаний', callback_data: WISH_CALLBACK_DATA.shareWishList }],
+          [{ text: 'Добавить по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
+          [{ text: 'Мои желания', callback_data: WISH_CALLBACK_DATA.getAllWishList }],
+          [{ text: 'Поделиться желаниями', callback_data: WISH_CALLBACK_DATA.shareWishList }],
           [
             {
-              text: 'Посмотреть чужой список желаний по никнейму',
+              text: 'Найти желания по никнейму',
               callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
             },
           ],
         ],
       },
     })
+  }
+
+  async showWishItem(
+    @Ctx() ctx: SceneContext,
+    options: {
+      wish: WishDocument
+      type: 'reply' | 'edit'
+      messageId?: number
+      appendedText?: string
+    },
+  ) {
+    const { type = 'reply', wish, messageId, appendedText = '' } = options
+    const userId = `${ctx.from.id}`
+
+    const props = {
+      reply_markup: {
+        inline_keyboard:
+          wish.userId === userId
+            ? getOwnerWishItemKeyboard(wish.id, wish, userId)
+            : getSharedWishItemKeyboard(wish.id, wish, userId),
+      },
+    }
+
+    if (type === 'edit') {
+      if (messageId) {
+        const link = `[${wish.name}](${wish.link})`
+        const text = `
+${wish?.link ? link : wish.name}
+${wish?.isBooked ? '\n*забронировано*' : ''}${wish?.isBooked && wish?.bookedUserId === userId ? ' *вами*' : ''}
+${appendedText}
+`
+
+        await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, { ...props, parse_mode: 'MarkdownV2' })
+
+        return
+      }
+    }
+
+    const link = `<a href="${wish.link}">${wish.name}</a>`
+    const text = `${wish?.link ? link : wish.name}${
+      wish?.isBooked ? `\n<b>забронировано${wish.bookedUserId === userId ? ' вами' : ''}</b>` : ''
+    }${appendedText}`
+
+    await ctx.replyWithHTML(text, props)
+
+    return
   }
 
   async showWishList(@Ctx() ctx: SceneContext, wishList: WishDocument[], sharedUser?: UserDocument) {
@@ -47,43 +93,14 @@ export class SharedService {
       return
     }
 
-    const userId = `${ctx.from.id}`
-
     await ctx.reply(
       sharedUser?.id
-        ? `Список желаний @${sharedUser.username} (Вы так же можете добавить понравившееся желание в свой список):`
-        : 'Текущий список ваших желаний:',
+        ? `Желания @${sharedUser.username} (Вы так же можете добавить понравившееся себе или забронировать):`
+        : 'Ваши желания:',
     )
 
     for await (const wish of wishList) {
-      const link = `<a href="${wish.link}">${wish.name}</a>`
-
-      await ctx.replyWithHTML(
-        `${wish?.link ? link : wish.name}`,
-        wish.userId === userId
-          ? {
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${wish?.id}` },
-                    { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${wish?.id}` },
-                  ],
-                ],
-              },
-            }
-          : {
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: 'Добавить в свой список',
-                      callback_data: `${WISH_CALLBACK_DATA.copy_wish_item} ${wish?.id}`,
-                    },
-                  ],
-                ],
-              },
-            },
-      )
+      await this.showWishItem(ctx, { wish, type: 'reply' })
     }
 
     await ctx?.reply('Не теряйтесь, дублирую основные команды', {

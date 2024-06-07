@@ -8,11 +8,12 @@ export class WishDocument {
 
   id: string
   userId: string
-  isBooked?: boolean | null
   /**
    * Max length - 300
    */
   name: string
+  isBooked?: boolean | null
+  bookedUserId?: string | null
   /**
    * Max length - 1000
    */

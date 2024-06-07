@@ -126,7 +126,7 @@ https://t.me/personal_wish_list_bot?start=${START_PAYLOAD_KEYS.shareByUserName}$
         'Команда не распознана, чтобы добавить новое желание, пришлите ссылку или нажмите на кнопку списка',
         {
           reply_markup: {
-            inline_keyboard: [[{ text: 'Список желаний', callback_data: WISH_CALLBACK_DATA.openWishScene }]],
+            inline_keyboard: [[{ text: 'Желания', callback_data: WISH_CALLBACK_DATA.openWishScene }]],
           },
         },
       )
