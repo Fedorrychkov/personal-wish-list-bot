@@ -31,6 +31,22 @@ export class SharedService {
   }
 
   async showWishList(@Ctx() ctx: SceneContext, wishList: WishDocument[], sharedUser?: UserDocument) {
+    if (!wishList?.length) {
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        ctx?.msgId,
+        '0',
+        'Список желаний пуст, ловите доступные команды:',
+        {
+          reply_markup: {
+            inline_keyboard: MAIN_SCENE_KEYBOARDS,
+          },
+        },
+      )
+
+      return
+    }
+
     const userId = `${ctx.from.id}`
 
     await ctx.reply(
@@ -40,8 +56,10 @@ export class SharedService {
     )
 
     for await (const wish of wishList) {
+      const link = `<a href="${wish.link}">${wish.name}</a>`
+
       await ctx.replyWithHTML(
-        `${wish.name}`,
+        `${wish?.link ? link : wish.name}`,
         wish.userId === userId
           ? {
               reply_markup: {

@@ -108,7 +108,7 @@ export class MainSceneService {
 
     ctx.reply(`
 Отправьте ссылку на свой вишлист, чтобы поделиться им:
-https://t.me/@personal_wish_list_bot?start=${START_PAYLOAD_KEYS.shareByUserName}${username}
+https://t.me/personal_wish_list_bot?start=${START_PAYLOAD_KEYS.shareByUserName}${username}
 `)
   }
 
@@ -138,7 +138,7 @@ https://t.me/@personal_wish_list_bot?start=${START_PAYLOAD_KEYS.shareByUserName}
       await this.sharedService.addWishItemByLink(ctx, { url })
     } catch (error) {
       this.logger.error('[onAddByUrl]', error, { data: error?.response?.data })
-      await ctx.reply('Элемент не удалось добавить, попробуйте другую ссылку')
+      await ctx.reply('Желание не удалось добавить, попробуйте другую ссылку')
     }
   }
 }

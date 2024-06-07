@@ -55,7 +55,7 @@ export class WishImageUrlEditSceneService {
     const { doc, data } = await this.wishEntity.getUpdate(wish.id)
 
     if (!doc) {
-      await handleUpdateLastMessage('Данного элемента более не существует, попробуйте сначала')
+      await handleUpdateLastMessage('Этого желания более не существует, попробуйте сначала')
       await this.sharedService.enterWishScene(ctx)
       await ctx.scene.leave()
 
@@ -101,7 +101,7 @@ export class WishImageUrlEditSceneService {
     const { doc, data } = await this.wishEntity.getUpdate(wish.id)
 
     if (!doc) {
-      await handleUpdateLastMessage('Данного элемента более не существует, попробуйте сначала')
+      await handleUpdateLastMessage('Этого желания более не существует, попробуйте сначала')
       await this.sharedService.enterWishScene(ctx)
       await ctx.scene.leave()
 

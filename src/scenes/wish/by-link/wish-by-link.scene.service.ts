@@ -37,7 +37,7 @@ export class WishByLinkSceneService {
       await ctx.scene.leave()
     } catch (error) {
       this.logger.error('[onAddByUrl]', error, { data: error?.response?.data })
-      await ctx.reply('Элемент не удалось добавить, попробуйте другую ссылку')
+      await ctx.reply('Желание не удалось добавить, попробуйте другую ссылку')
     }
   }
 }
