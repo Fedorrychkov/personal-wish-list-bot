@@ -33,11 +33,26 @@ jobs:
       - name: 🚀 Build project
         run: npm run build:prod
 
+      - name: Create secrets for nginx
+        run: |
+          echo '${{ secrets.NGINX_PROD_CERT }}' >> certificate.crt
+
+          echo '${{ secrets.NGINX_PROD_PRIVATE }}' >> private.key
+
+      - name: 🚀 Publish Nginx to Github Packages Registry
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          name: fedorrychkov/personal-wish-list-bot/nginx-prod
+          registry: docker.pkg.github.com
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          dockerfile: Dockerfile-prod.nginx
+          tags: latest
+
       - name: 🚀 Publish Api to Github Packages Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
           name: fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod
-          # workdir: apps/api
           registry: docker.pkg.github.com
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GITHUB_TOKEN }}
@@ -57,8 +72,12 @@ jobs:
           envs: GH_USERNAME, GITHUB_TOKEN
           script: |
             docker stop nestjs-container
+            docker stop nginx-container
             docker system prune -a -f
             docker network create mynetwork
             docker login docker.pkg.github.com -u $GH_USERNAME -p $GITHUB_TOKEN
+            docker pull docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/nginx-prod:latest
             docker pull docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod:latest
             docker run --restart=on-failure -dit --name nestjs-container -p 8080:8080 --network mynetwork docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod:latest
+            docker run --restart=always -dit --name nginx-container -p 80:80 --network mynetwork docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/nginx-prod:latest
+
