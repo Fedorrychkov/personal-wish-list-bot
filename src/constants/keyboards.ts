@@ -1,7 +1,14 @@
 import { WishDocument } from 'src/entities'
 import { WISH_CALLBACK_DATA } from 'src/scenes/wish/constants'
 
-export const MAIN_SCENE_KEYBOARDS = [
+import { KeyboardType } from './types'
+
+export const getMainOpenWebAppButton = (url: string) => ({
+  text: 'Web App',
+  web_app: { url },
+})
+
+export const getMainKeyboards = ({ webAppUrl }: KeyboardType) => [
   [{ text: 'Желания', callback_data: WISH_CALLBACK_DATA.openWishScene }],
   [{ text: 'Поделиться по ссылке', callback_data: WISH_CALLBACK_DATA.shareWishList }],
   [
@@ -10,12 +17,12 @@ export const MAIN_SCENE_KEYBOARDS = [
       callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
     },
   ],
+  [getMainOpenWebAppButton(webAppUrl)],
 ]
 
-export const SCENE_NAVIGATION_KEYBOARDS = [
-  ...MAIN_SCENE_KEYBOARDS,
-  [{ text: 'Назад', callback_data: WISH_CALLBACK_DATA.back }],
-]
+const backBtn = { text: 'Назад', callback_data: WISH_CALLBACK_DATA.back }
+
+export const getSceneNavigationKeyboard = (props: KeyboardType) => [...getMainKeyboards(props), [backBtn]]
 
 export const getOwnerWishItemKeyboard = (id: string, wish?: WishDocument, senderUserId?: string) => {
   const defaultCommands = [

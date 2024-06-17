@@ -1,11 +1,12 @@
-import { Module } from '@nestjs/common'
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ScheduleModule } from '@nestjs/schedule'
+import * as cors from 'cors'
 import { TelegrafModule } from 'nestjs-telegraf'
 import * as LocalSession from 'telegraf-session-local'
 
 import { isProduction } from './env'
-import { UserModule } from './modules'
+import { CustomConfigModule, FileModule, UserModule } from './modules'
 import { MainSceneModule, WishSceneModule } from './scenes'
 import { FirestoreModule } from './services'
 
@@ -42,8 +43,31 @@ const session = new LocalSession()
     }),
     MainSceneModule,
     WishSceneModule,
+    FileModule,
+    CustomConfigModule,
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(cors({ origin: true })).forRoutes(
+      {
+        path: 'v1/user',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/wish',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/wish/:id',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/file/:id',
+        method: RequestMethod.ALL,
+      },
+    )
+  }
+}

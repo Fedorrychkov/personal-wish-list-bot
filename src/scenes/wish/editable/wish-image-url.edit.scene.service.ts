@@ -1,10 +1,12 @@
 import { Timestamp } from '@google-cloud/firestore'
 import { Injectable, Logger } from '@nestjs/common'
 import { Ctx, Hears, On, Scene, SceneEnter } from 'nestjs-telegraf'
-import { SCENE_NAVIGATION_KEYBOARDS } from 'src/constants/keyboards'
+import { getSceneNavigationKeyboard } from 'src/constants'
 import { WishDocument, WishEntity } from 'src/entities'
 import { time } from 'src/helpers'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
+import { CustomConfigService } from 'src/modules'
+import { FileService } from 'src/modules/file'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../../shared/shared.scene.service'
@@ -15,7 +17,12 @@ import { WISH_SCENE_EDIT_IMAGE_URL_SCENE } from '../constants'
 export class WishImageUrlEditSceneService {
   private logger = new Logger(WishImageUrlEditSceneService.name)
 
-  constructor(private readonly wishEntity: WishEntity, private readonly sharedService: SharedService) {}
+  constructor(
+    private readonly wishEntity: WishEntity,
+    private readonly sharedService: SharedService,
+    private readonly fileService: FileService,
+    private readonly customConfigService: CustomConfigService,
+  ) {}
 
   @SceneEnter()
   async enter(@Ctx() ctx: SceneContext) {
@@ -41,7 +48,7 @@ export class WishImageUrlEditSceneService {
     const handleUpdateLastMessage = async (text: string) => {
       await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, {
         reply_markup: {
-          inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
     }
@@ -65,7 +72,9 @@ export class WishImageUrlEditSceneService {
     const dueDateMillis = time().valueOf()
     const updatedAt = Timestamp.fromMillis(dueDateMillis)
 
-    await doc.update({ ...data, imageUrl: imageUrl?.href, updatedAt })
+    const file = await this.fileService.createFile(imageUrl?.href)
+
+    await doc.update({ ...data, imageUrl: file?.aliasUrl, updatedAt })
 
     await this.sharedService.showEditWishItem(ctx, { wishId: wish.id, type: 'deleteAndReply', messageId })
 

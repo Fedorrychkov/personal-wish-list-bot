@@ -1,9 +1,10 @@
 import { Timestamp } from '@google-cloud/firestore'
 import { Injectable, Logger } from '@nestjs/common'
 import { Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
-import { SCENE_NAVIGATION_KEYBOARDS } from 'src/constants/keyboards'
+import { getSceneNavigationKeyboard } from 'src/constants'
 import { WishDocument, WishEntity } from 'src/entities'
 import { time } from 'src/helpers'
+import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { WISH_SCENE_EDIT_NAME_SCENE } from '../constants'
@@ -14,7 +15,11 @@ import { SharedService } from './../../shared/shared.scene.service'
 export class WishNameEditSceneService {
   private logger = new Logger(WishNameEditSceneService.name)
 
-  constructor(private readonly wishEntity: WishEntity, private readonly sharedService: SharedService) {}
+  constructor(
+    private readonly wishEntity: WishEntity,
+    private readonly sharedService: SharedService,
+    private readonly customConfigService: CustomConfigService,
+  ) {}
 
   @SceneEnter()
   async enter(@Ctx() ctx: SceneContext) {
@@ -31,7 +36,7 @@ export class WishNameEditSceneService {
     const handleUpdateLastMessage = async (text: string) => {
       await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, {
         reply_markup: {
-          inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
     }

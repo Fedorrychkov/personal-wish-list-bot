@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Ctx } from 'nestjs-telegraf'
-import { getOwnerWishItemKeyboard, getSharedWishItemKeyboard, MAIN_SCENE_KEYBOARDS } from 'src/constants/keyboards'
+import { getMainKeyboards, getOwnerWishItemKeyboard, getSharedWishItemKeyboard } from 'src/constants/keyboards'
 import { UserDocument, WishDocument, WishEntity } from 'src/entities'
+import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { WISH_CALLBACK_DATA } from '../wish/constants'
@@ -10,7 +11,7 @@ import { getUrlMetadata } from '../wish/utils/getUrlMetadata'
 @Injectable()
 export class SharedService {
   private logger = new Logger(SharedService.name)
-  constructor(private readonly wishEntity: WishEntity) {}
+  constructor(private readonly wishEntity: WishEntity, private readonly customConfigService: CustomConfigService) {}
 
   async enterWishScene(@Ctx() ctx: SceneContext) {
     await ctx.reply('Управление желаниями', {
@@ -85,7 +86,7 @@ ${appendedText}
         'Список желаний пуст, ловите доступные команды:',
         {
           reply_markup: {
-            inline_keyboard: MAIN_SCENE_KEYBOARDS,
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
           },
         },
       )
@@ -105,7 +106,7 @@ ${appendedText}
 
     await ctx?.reply('Не теряйтесь, дублирую основные команды', {
       reply_markup: {
-        inline_keyboard: MAIN_SCENE_KEYBOARDS,
+        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
       },
     })
   }
@@ -157,7 +158,11 @@ ${appendedText}
 Название: ${wish.name}
 Описание: ${wish.description}
 Ссылка: ${wish.link}
-Ссылка на изображение: ${wish.imageUrl}
+Ссылка на изображение: ${
+      wish.imageUrl?.includes('/v1/file') && !wish.imageUrl?.includes('http')
+        ? `${this.customConfigService.apiUrl}${wish.imageUrl}`
+        : wish.imageUrl
+    }
 
 Выберите действие
 `

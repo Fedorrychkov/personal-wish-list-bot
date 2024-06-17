@@ -56,9 +56,8 @@ jobs:
           port: 22
           envs: GH_USERNAME, GITHUB_TOKEN
           script: |
+            docker stop nestjs-container
             docker system prune -a -f
-            docker stop $(docker ps -a -q)
-            docker rm -f $(docker ps -a -q)
             docker network create mynetwork
             docker login docker.pkg.github.com -u $GH_USERNAME -p $GITHUB_TOKEN
             docker pull docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod:latest

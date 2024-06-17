@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common'
 import { Action, Ctx, Update } from 'nestjs-telegraf'
-import { MAIN_SCENE_KEYBOARDS } from 'src/constants/keyboards'
+import { getMainKeyboards } from 'src/constants'
 import { WishEntity } from 'src/entities'
+import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../shared'
@@ -18,7 +19,11 @@ import {
 @Update()
 @Injectable()
 export class WishMainService {
-  constructor(private readonly wishEntity: WishEntity, private readonly sharedService: SharedService) {}
+  constructor(
+    private readonly wishEntity: WishEntity,
+    private readonly sharedService: SharedService,
+    private readonly customConfigService: CustomConfigService,
+  ) {}
 
   @Action(WISH_CALLBACK_DATA.addNewByLink)
   async editItemName(@Ctx() ctx: SceneContext) {
@@ -123,7 +128,7 @@ export class WishMainService {
       text: 'Забронировать не удалось, желание не найдено, попробуйте другое желание или начните с начала',
       replyMarkup: {
         reply_markup: {
-          inline_keyboard: MAIN_SCENE_KEYBOARDS,
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       },
     }
@@ -193,7 +198,7 @@ export class WishMainService {
       text: 'Отменить бронь не удалось, желание не найдено, начните с начала',
       replyMarkup: {
         reply_markup: {
-          inline_keyboard: MAIN_SCENE_KEYBOARDS,
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       },
     }

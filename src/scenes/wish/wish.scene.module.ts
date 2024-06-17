@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
-import { UserModule, WishModule } from 'src/modules'
+import { CustomConfigModule, UserModule, WishModule } from 'src/modules'
+import { FileModule } from 'src/modules/file'
 import { SharedSceneModule } from 'src/scenes/shared'
 
 import { GetAnotherWishListByUserNameceneService } from './another-wish-list'
@@ -13,7 +14,7 @@ import {
 import { WishMainService } from './wish.scene.service'
 
 @Module({
-  imports: [WishModule, UserModule, SharedSceneModule],
+  imports: [WishModule, UserModule, SharedSceneModule, FileModule, CustomConfigModule],
   controllers: [],
   providers: [
     WishMainService,

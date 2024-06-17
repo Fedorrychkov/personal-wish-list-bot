@@ -3,19 +3,18 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import firebase from 'firebase-admin'
 import { time } from 'src/helpers'
 
-import { UserDocument } from './user.document'
-import { UserFilter } from './user.types'
+import { FileDocument } from './file.document'
 
 @Injectable()
-export class UserEntity {
-  private logger: Logger = new Logger(UserEntity.name)
+export class FileEntity {
+  private logger: Logger = new Logger(FileEntity.name)
 
   constructor(
-    @Inject(UserDocument.collectionName)
-    private collection: CollectionReference<UserDocument>,
+    @Inject(FileDocument.collectionName)
+    private collection: CollectionReference<FileDocument>,
   ) {}
 
-  async get(id: string): Promise<UserDocument | null> {
+  async get(id: string): Promise<FileDocument | null> {
     const snapshot = await this.collection.doc(id).get()
 
     if (!snapshot.exists) {
@@ -25,7 +24,7 @@ export class UserEntity {
     }
   }
 
-  async createOrUpdate(user: UserDocument) {
+  async createOrUpdate(user: FileDocument) {
     const document = await this.collection.doc(user.id)
     await document.set(user)
 
@@ -34,7 +33,7 @@ export class UserEntity {
 
   private findAllGenerator() {
     const collectionRef = this.collection
-    const query: firebase.firestore.Query<UserDocument> = collectionRef
+    const query: firebase.firestore.Query<FileDocument> = collectionRef
 
     return query
   }
@@ -50,15 +49,11 @@ export class UserEntity {
     }
   }
 
-  async findAll(filter: UserFilter): Promise<UserDocument[]> {
-    const list: UserDocument[] = []
+  async findAll(): Promise<FileDocument[]> {
+    const list: FileDocument[] = []
     let query = this.findAllGenerator()
 
     query = query.orderBy('createdAt', 'desc')
-
-    if (filter?.username) {
-      query = query.where('username', '==', filter.username)
-    }
 
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))
@@ -66,22 +61,18 @@ export class UserEntity {
     return list
   }
 
-  getValidProperties(user: UserDocument) {
+  getValidProperties(file: FileDocument) {
     const dueDateMillis = time().valueOf()
     const createdAt = Timestamp.fromMillis(dueDateMillis)
 
     return {
-      id: user.id,
-      chatId: user.chatId,
-      username: user.username || null,
-      firstName: user.firstName || null,
-      lastName: user.lastName || null,
-      isPremium: user.isPremium || false,
-      avatarUrl: user.avatarUrl || null,
-      isBot: user.isBot || false,
-      phone: user.phone || null,
-      createdAt: user.createdAt || createdAt,
-      updatedAt: user.updatedAt || null,
+      id: file.id,
+      aliasUrl: file.aliasUrl,
+      originalUrl: file.originalUrl,
+      fileName: file.fileName || null,
+      type: file.type,
+      createdAt: file.createdAt || createdAt,
+      updatedAt: file.updatedAt || null,
     }
   }
 }

@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common'
-import { UserModule, WishModule } from 'src/modules'
+import { CustomConfigModule, UserModule, WishModule } from 'src/modules'
+import { FileModule } from 'src/modules/file'
 import { SharedSceneModule } from 'src/scenes/shared'
 
 import { MainSceneService } from './main.scene.service'
 
 @Module({
-  imports: [UserModule, WishModule, SharedSceneModule],
+  imports: [UserModule, WishModule, SharedSceneModule, FileModule, CustomConfigModule],
   controllers: [],
   providers: [MainSceneService],
   exports: [],

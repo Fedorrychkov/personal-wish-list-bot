@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Action, Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
-import { MAIN_SCENE_KEYBOARDS, SCENE_NAVIGATION_KEYBOARDS } from 'src/constants/keyboards'
+import { getMainKeyboards, getSceneNavigationKeyboard } from 'src/constants/keyboards'
 import { UserEntity, WishEntity } from 'src/entities'
+import { CustomConfigService } from 'src/modules'
 import { SharedService } from 'src/scenes/shared'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -16,6 +17,7 @@ export class GetAnotherWishListByUserNameceneService {
     private readonly sharedService: SharedService,
     private readonly userEntity: UserEntity,
     private readonly wishEntity: WishEntity,
+    private readonly customConfigService: CustomConfigService,
   ) {}
 
   @SceneEnter()
@@ -37,7 +39,7 @@ export class GetAnotherWishListByUserNameceneService {
     if (!sharedUserName) {
       await ctx.reply('Произошла ошибка получения никнейма, попробуйте ввести еще раз, в формате @username', {
         reply_markup: {
-          inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
 
@@ -47,7 +49,7 @@ export class GetAnotherWishListByUserNameceneService {
     if (sharedUserName.length > 600) {
       await ctx.reply('Никнейм не должен превышать 600 символов', {
         reply_markup: {
-          inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
 
@@ -61,7 +63,7 @@ export class GetAnotherWishListByUserNameceneService {
         `Пользователя по никнейму: ${ctx?.text} нет в системе, попробуйте ввести другой никнейм, либо проверьте корректность никнейма`,
         {
           reply_markup: {
-            inline_keyboard: SCENE_NAVIGATION_KEYBOARDS,
+            inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
           },
         },
       )
@@ -81,7 +83,7 @@ export class GetAnotherWishListByUserNameceneService {
       if (!items?.length) {
         await ctx?.reply(`Список желаний пользователя с ником ${ctx?.text} пуст`, {
           reply_markup: {
-            inline_keyboard: MAIN_SCENE_KEYBOARDS,
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
           },
         })
 
