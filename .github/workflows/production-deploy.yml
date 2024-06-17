@@ -79,6 +79,6 @@ jobs:
             docker login docker.pkg.github.com -u $GH_USERNAME -p $GITHUB_TOKEN
             docker pull docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/nginx-prod:latest
             docker pull docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod:latest
-            docker run --restart=on-failure -dit --name nestjs-container -p 8080:8080 --network mynetwork docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod:latest
+            docker run --restart=on-failure -dit --name nestjs-container -p 443:8080 --network mynetwork docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod:latest
             docker run --restart=always -dit --name nginx-container -p 80:80 --network mynetwork docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/nginx-prod:latest
 
