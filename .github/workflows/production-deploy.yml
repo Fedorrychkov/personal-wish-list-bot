@@ -30,14 +30,15 @@ jobs:
 
           echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' >> service-account.json
 
-      - name: 🚀 Build project
-        run: npm run build:prod
 
       - name: Create secrets for nginx
         run: |
           echo '${{ secrets.NGINX_PROD_CERT }}' >> certificate.crt
 
           echo '${{ secrets.NGINX_PROD_PRIVATE }}' >> private.key
+
+      - name: 🚀 Build project
+        run: npm run build:prod
 
       - name: 🚀 Publish Nginx to Github Packages Registry
         uses: elgohr/Publish-Docker-Github-Action@master
