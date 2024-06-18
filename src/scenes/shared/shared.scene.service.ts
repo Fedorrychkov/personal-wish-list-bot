@@ -121,7 +121,7 @@ ${appendedText}
         userId: `${ctx?.from?.id}`,
         name: openGraph?.title || 'Не удалось получить название',
         description: openGraph?.description || 'Не удалось получить описание',
-        imageUrl: openGraph?.imageUrl || 'Не удалось получить изображение',
+        imageUrl: openGraph?.imageUrl || '',
         link: openGraph?.wishUrl || url,
       })
 
