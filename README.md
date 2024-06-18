@@ -1,4 +1,8 @@
 # Wish List
+Бот для работы со списком желаний
+
+## Mini App бота
+[Tg Mini App](https://github.com/Fedorrychkov/personal-wish-mini-tg-app)
 ## Фукнцонал бота
 - Приветствие
 - Регистрация элементов в списке желаний
@@ -15,7 +19,7 @@
 ___
 #### Возможности в планах
 - Mini App
-- Дублирование функционала бота
+- Дублирование функционала бота в мини аппе
 
 ## Setting up firebase
 add package global `npm install -g firebase-tools` and use `firebase init` after it. Select => 1. Firestore; 2. Existing project; 3. Other steps use defaults. Or you can use command `firebase use your-project-name` for start using your firestore.
