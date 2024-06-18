@@ -30,7 +30,6 @@ jobs:
 
           echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' >> service-account.json
 
-
       - name: Create secrets for nginx
         run: |
           echo '${{ secrets.NGINX_PROD_CERT }}' >> certificate.crt
