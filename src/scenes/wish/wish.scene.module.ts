@@ -11,13 +11,17 @@ import {
   WishLinkEditSceneService,
   WishNameEditSceneService,
 } from './editable'
-import { WishMainService } from './wish.scene.service'
+import { WishItemEditService } from './wish.item.edit.service'
+import { WishItemManipulationService } from './wish.item.manipulation.service'
+import { WishMainSceneService } from './wish.main.scene.service'
 
 @Module({
   imports: [WishModule, UserModule, SharedSceneModule, FileModule, CustomConfigModule],
   controllers: [],
   providers: [
-    WishMainService,
+    WishMainSceneService,
+    WishItemEditService,
+    WishItemManipulationService,
     WishByLinkSceneService,
     WishNameEditSceneService,
     WishDescriptionEditSceneService,

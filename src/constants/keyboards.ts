@@ -9,18 +9,48 @@ export const getMainOpenWebAppButton = (url: string) => ({
 })
 
 export const getMainKeyboards = ({ webAppUrl }: KeyboardType) => [
-  [{ text: 'Желания', callback_data: WISH_CALLBACK_DATA.openWishScene }],
+  [{ text: 'Управление желаниями', callback_data: WISH_CALLBACK_DATA.openWishScene }],
   [{ text: 'Поделиться по ссылке', callback_data: WISH_CALLBACK_DATA.shareWishList }],
-  [
-    {
-      text: 'Посмотреть чужие желания по никнейму',
-      callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
-    },
-  ],
   [getMainOpenWebAppButton(webAppUrl)],
 ]
 
-const backBtn = { text: 'Назад', callback_data: WISH_CALLBACK_DATA.back }
+export const getWishSceneKeyboards = () => [
+  [{ text: 'Добавить по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
+  [{ text: 'Список моих желания', callback_data: WISH_CALLBACK_DATA.getAllWishList }],
+  [{ text: 'Поделиться желаниями', callback_data: WISH_CALLBACK_DATA.shareWishList }],
+  [
+    {
+      text: 'Найти желания по нику (@username)',
+      callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
+    },
+  ],
+]
+
+export const getWishItemKeyboard = (id: string) => [
+  [
+    { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${id}` },
+    { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${id}` },
+  ],
+  [{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
+]
+
+export const getEditWishItemKeyboard = (id: string) => [
+  [
+    { text: 'Название', callback_data: `${WISH_CALLBACK_DATA.editWishItemName} ${id}` },
+    { text: 'Описание', callback_data: `${WISH_CALLBACK_DATA.editWishItemDescription} ${id}` },
+  ],
+  [
+    { text: 'Ссылка', callback_data: `${WISH_CALLBACK_DATA.editWishItemLink} ${id}` },
+    { text: 'Изображение', callback_data: `${WISH_CALLBACK_DATA.editWishItemImageUrl} ${id}` },
+  ],
+  [
+    { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${id}` },
+    { text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink },
+    { text: 'Назад', callback_data: `${WISH_CALLBACK_DATA.back} ${id}` },
+  ],
+]
+
+export const backBtn = { text: 'Назад', callback_data: WISH_CALLBACK_DATA.back }
 
 export const getSceneNavigationKeyboard = (props: KeyboardType) => [...getMainKeyboards(props), [backBtn]]
 

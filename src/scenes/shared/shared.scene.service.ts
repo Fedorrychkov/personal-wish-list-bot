@@ -1,11 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Ctx } from 'nestjs-telegraf'
-import { getMainKeyboards, getOwnerWishItemKeyboard, getSharedWishItemKeyboard } from 'src/constants/keyboards'
+import { getWishItemText } from 'src/constants'
+import {
+  getEditWishItemKeyboard,
+  getMainKeyboards,
+  getOwnerWishItemKeyboard,
+  getSharedWishItemKeyboard,
+  getWishItemKeyboard,
+  getWishSceneKeyboards,
+} from 'src/constants/keyboards'
 import { UserDocument, WishDocument, WishEntity } from 'src/entities'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
-import { WISH_CALLBACK_DATA } from '../wish/constants'
 import { getUrlMetadata } from '../wish/utils/getUrlMetadata'
 
 @Injectable()
@@ -14,21 +21,21 @@ export class SharedService {
   constructor(private readonly wishEntity: WishEntity, private readonly customConfigService: CustomConfigService) {}
 
   async enterWishScene(@Ctx() ctx: SceneContext) {
-    await ctx.reply('Управление желаниями', {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: 'Добавить по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
-          [{ text: 'Мои желания', callback_data: WISH_CALLBACK_DATA.getAllWishList }],
-          [{ text: 'Поделиться желаниями', callback_data: WISH_CALLBACK_DATA.shareWishList }],
-          [
-            {
-              text: 'Найти желания по никнейму',
-              callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
-            },
-          ],
-        ],
-      },
-    })
+    await ctx?.scene?.leave?.()
+
+    if ((ctx as any)?.update?.callback_query?.message?.from?.is_bot) {
+      await ctx.editMessageText('Управление желаниями', {
+        reply_markup: {
+          inline_keyboard: getWishSceneKeyboards(),
+        },
+      })
+    } else {
+      await ctx.reply('Управление желаниями', {
+        reply_markup: {
+          inline_keyboard: getWishSceneKeyboards(),
+        },
+      })
+    }
   }
 
   async showWishItem(
@@ -54,9 +61,11 @@ export class SharedService {
 
     if (type === 'edit') {
       if (messageId) {
-        const link = `[${wish.name}](${wish.link})`
+        const link = wish.link
+          ? `[${wish.name || 'Название не установлено'}](${wish.link})`
+          : 'Ссылка и название не распознаны, попробуйте отредактировать или удалить желание начав сначала'
         const text = `
-${wish?.link ? link : wish.name}
+${wish?.link ? link : wish.name || 'Название не установлено'}
 ${wish?.isBooked ? '\n*забронировано*' : ''}${wish?.isBooked && wish?.bookedUserId === userId ? ' *вами*' : ''}
 ${appendedText}
 `
@@ -67,7 +76,9 @@ ${appendedText}
       }
     }
 
-    const link = `<a href="${wish.link}">${wish.name}</a>`
+    const link = wish.link
+      ? `<a href="${wish.link}">${wish.name || 'Название не установлено'}</a>`
+      : `Ссылка на желание ${wish.name || 'без названия'} не установлена`
     const text = `${wish?.link ? link : wish.name}${
       wish?.isBooked ? `\n<b>забронировано${wish.bookedUserId === userId ? ' вами' : ''}</b>` : ''
     }${appendedText}`
@@ -94,17 +105,17 @@ ${appendedText}
       return
     }
 
-    await ctx.reply(
+    await ctx.replyWithHTML(
       sharedUser?.id
         ? `Желания @${sharedUser.username} (Вы так же можете добавить понравившееся себе или забронировать):`
-        : 'Ваши желания:',
+        : '<b>Ваши желания:</b>',
     )
 
     for await (const wish of wishList) {
       await this.showWishItem(ctx, { wish, type: 'reply' })
     }
 
-    await ctx?.reply('Не теряйтесь, дублирую основные команды', {
+    await ctx?.replyWithHTML('<b>Не теряйтесь, дублирую основные команды</b>', {
       reply_markup: {
         inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
       },
@@ -119,10 +130,10 @@ ${appendedText}
 
       const payload = this.wishEntity.getValidProperties({
         userId: `${ctx?.from?.id}`,
-        name: openGraph?.title || 'Не удалось получить название',
-        description: openGraph?.description || 'Не удалось получить описание',
+        name: openGraph?.title || '',
+        description: openGraph?.description || '',
         imageUrl: openGraph?.imageUrl || '',
-        link: openGraph?.wishUrl || url,
+        link: url || '',
       })
 
       const response = await this.wishEntity.createOrUpdate(payload)
@@ -131,13 +142,7 @@ ${appendedText}
         `${response.name}\nС изображением: ${response?.imageUrl}\n\nдобавлен в ваш список желаний!`,
         {
           reply_markup: {
-            inline_keyboard: [
-              [
-                { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${response?.id}` },
-                { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${response?.id}` },
-              ],
-              [{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
-            ],
+            inline_keyboard: getWishItemKeyboard(response.id),
           },
         },
       )
@@ -154,31 +159,11 @@ ${appendedText}
     const { wishId: id, type = 'edit', messageId } = options || {}
     const wish = await this.wishEntity.get(id)
 
-    const text = `
-Название: ${wish.name}
-Описание: ${wish.description}
-Ссылка: ${wish.link}
-Ссылка на изображение: ${
-      wish.imageUrl?.includes('/v1/file') && !wish.imageUrl?.includes('http')
-        ? `${this.customConfigService.apiUrl}${wish.imageUrl}`
-        : wish.imageUrl
-    }
-
-Выберите действие
-`
+    const text = getWishItemText(wish, { apiUrl: this.customConfigService.apiUrl })
 
     const props = {
       reply_markup: {
-        inline_keyboard: [
-          [{ text: 'Название', callback_data: `${WISH_CALLBACK_DATA.editWishItemName} ${id}` }],
-          [{ text: 'Описание', callback_data: `${WISH_CALLBACK_DATA.editWishItemDescription} ${id}` }],
-          [{ text: 'Ссылка', callback_data: `${WISH_CALLBACK_DATA.editWishItemLink} ${id}` }],
-          [{ text: 'Изображение', callback_data: `${WISH_CALLBACK_DATA.editWishItemImageUrl} ${id}` }],
-          [
-            { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${id}` },
-            { text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink },
-          ],
-        ],
+        inline_keyboard: getEditWishItemKeyboard(id),
       },
     }
 

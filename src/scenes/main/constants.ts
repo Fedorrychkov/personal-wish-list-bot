@@ -14,4 +14,5 @@ export const START_PAYLOAD_KEYS = {
 
 export const MAIN_CALLBACK_DATA = {
   openWebApp: 'open_web_app',
+  getReleaseNotes: 'get_release_notes',
 }

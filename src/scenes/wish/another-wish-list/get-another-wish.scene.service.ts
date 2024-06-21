@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Action, Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
+import { Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
 import { getMainKeyboards, getSceneNavigationKeyboard } from 'src/constants/keyboards'
 import { UserEntity, WishEntity } from 'src/entities'
 import { CustomConfigService } from 'src/modules'
 import { SharedService } from 'src/scenes/shared'
 import { SceneContext } from 'telegraf/typings/scenes'
 
-import { WISH_CALLBACK_DATA, WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE } from '../constants'
+import { WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE } from '../constants'
 
 @Scene(WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE)
 @Injectable()
@@ -25,11 +25,6 @@ export class GetAnotherWishListByUserNameceneService {
     const state = (ctx.scene?.state || { wish: undefined }) as { messageId: number }
     const { messageId } = state || {}
     await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', 'Введите никнейм для поиска, например @muzltoff')
-  }
-
-  @Action(new RegExp(WISH_CALLBACK_DATA.back))
-  async removeWishItem(@Ctx() ctx: SceneContext) {
-    await ctx.scene.leave()
   }
 
   @Hears(/.*/)

@@ -20,8 +20,6 @@ export class WishByLinkSceneService {
   async onAddByUrl(@Ctx() ctx: SceneContext) {
     const url = tryToGetUrlOrEmptyString(ctx?.text)
 
-    // this.logger.log({ ctx })
-
     if (!url) {
       await ctx.reply(
         'Ссылка не распознана, формат домена должен быть вида https://google.com\nПопробуйте другую ссылку',

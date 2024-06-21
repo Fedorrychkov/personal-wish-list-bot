@@ -1,13 +1,13 @@
 import { Timestamp } from '@google-cloud/firestore'
 import { Injectable, Logger } from '@nestjs/common'
-import { Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
-import { getSceneNavigationKeyboard } from 'src/constants'
+import { Action, Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
+import { backBtn, getSceneNavigationKeyboard } from 'src/constants'
 import { WishDocument, WishEntity } from 'src/entities'
 import { time } from 'src/helpers'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
-import { WISH_SCENE_EDIT_NAME_SCENE } from '../constants'
+import { WISH_CALLBACK_DATA, WISH_SCENE_EDIT_NAME_SCENE } from '../constants'
 import { SharedService } from './../../shared/shared.scene.service'
 
 @Scene(WISH_SCENE_EDIT_NAME_SCENE)
@@ -25,7 +25,22 @@ export class WishNameEditSceneService {
   async enter(@Ctx() ctx: SceneContext) {
     const state = (ctx.scene?.state || { wish: undefined }) as { wish: WishDocument | undefined; messageId: number }
     const { messageId } = state || {}
-    await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', 'Введите новое название в ответном сообщении')
+
+    await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', '*Введите новое название в ответном сообщении*', {
+      reply_markup: {
+        inline_keyboard: [[backBtn]],
+      },
+      parse_mode: 'MarkdownV2',
+    })
+  }
+
+  @Action(WISH_CALLBACK_DATA.back)
+  async back(@Ctx() ctx: SceneContext) {
+    const state = (ctx.scene?.state || { wish: undefined }) as { wish: WishDocument | undefined; messageId: number }
+    const { wish, messageId } = state || {}
+
+    await this.sharedService.showEditWishItem(ctx, { wishId: wish.id, type: 'edit', messageId })
+    await ctx.scene.leave()
   }
 
   @Hears(/.*/)
@@ -38,6 +53,7 @@ export class WishNameEditSceneService {
         reply_markup: {
           inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
+        parse_mode: 'MarkdownV2',
       })
     }
 
@@ -78,7 +94,7 @@ export class WishNameEditSceneService {
 
     await doc.update({ ...data, name, updatedAt })
 
-    await this.sharedService.showEditWishItem(ctx, { wishId: wish.id, type: 'deleteAndReply', messageId })
+    await this.sharedService.showEditWishItem(ctx, { wishId: wish.id, type: 'edit', messageId })
 
     await ctx.scene.leave()
   }

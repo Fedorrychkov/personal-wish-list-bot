@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Action, Command, Ctx, Hears, Help, On, Start, Update } from 'nestjs-telegraf'
+import * as fs from 'fs'
+import { Action, Command, Ctx, Help, On, Start, Update } from 'nestjs-telegraf'
 import { getMainKeyboards, getMainOpenWebAppButton } from 'src/constants/keyboards'
 import { UserEntity, WishEntity } from 'src/entities'
-import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { CustomConfigService } from 'src/modules'
 import { FileService } from 'src/modules/file'
 import { Context } from 'telegraf'
@@ -131,12 +131,13 @@ export class MainSceneService {
     await ctx.reply(botWelcomeCommandsText)
   }
 
+  @Command(WISH_CALLBACK_DATA.openWishScene)
   @Action(WISH_CALLBACK_DATA.openWishScene)
   async openWishScene(@Ctx() ctx: SceneContext) {
     await this.sharedService.enterWishScene(ctx)
   }
 
-  @Command(`${MAIN_CALLBACK_DATA.openWebApp}`)
+  @Command(MAIN_CALLBACK_DATA.openWebApp)
   @Action(MAIN_CALLBACK_DATA.openWebApp)
   async openWebApp(@Ctx() ctx: SceneContext) {
     await ctx?.reply('Чтобы открыть веб приложение, нажмите кнопку ниже', {
@@ -146,7 +147,39 @@ export class MainSceneService {
     })
   }
 
-  @Command(`${WISH_CALLBACK_DATA.shareWishList}`)
+  @Command(MAIN_CALLBACK_DATA.getReleaseNotes)
+  @Action(MAIN_CALLBACK_DATA.getReleaseNotes)
+  async getReleaseNotes(@Ctx() ctx: SceneContext) {
+    const promise = async () =>
+      new Promise((resolve) => {
+        fs.readFile('./CHANGELOG.md', 'utf8', (err, data) => {
+          if (err) {
+            resolve('')
+          }
+
+          resolve(data)
+        })
+      })
+
+    const content = await promise()
+
+    const text = content
+      ? `
+Список обновлений бота
+______
+${content}
+`
+      : 'Не удалось найти CHANGELOG'
+
+    await ctx?.reply(text, {
+      reply_markup: {
+        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+      },
+      parse_mode: 'Markdown',
+    })
+  }
+
+  @Command(WISH_CALLBACK_DATA.shareWishList)
   @Action(WISH_CALLBACK_DATA.shareWishList)
   async shareSelfWishListByUsername(@Ctx() ctx: SceneContext) {
     const username = ctx?.from?.username
@@ -160,30 +193,5 @@ https://t.me/personal_wish_list_bot?start=${START_PAYLOAD_KEYS.shareByUserName}$
   @On('photo')
   async onLoadPhoto(@Ctx() ctx: SceneContext) {
     ctx.reply('Чтобы установить фото, создайте новое желание или ортедактируйте существующее')
-  }
-
-  @Hears(/.*/)
-  async onAnyAnswer(@Ctx() ctx: SceneContext) {
-    const url = tryToGetUrlOrEmptyString(ctx?.text)
-
-    if (!url) {
-      await ctx.reply(
-        'Команда не распознана, чтобы добавить новое желание, пришлите ссылку или нажмите на кнопку списка',
-        {
-          reply_markup: {
-            inline_keyboard: [[{ text: 'Желания', callback_data: WISH_CALLBACK_DATA.openWishScene }]],
-          },
-        },
-      )
-
-      return
-    }
-
-    try {
-      await this.sharedService.addWishItemByLink(ctx, { url })
-    } catch (error) {
-      this.logger.error('[onAddByUrl]', error, { data: error?.response?.data })
-      await ctx.reply('Желание не удалось добавить, попробуйте другую ссылку')
-    }
   }
 }
