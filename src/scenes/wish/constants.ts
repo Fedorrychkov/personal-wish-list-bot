@@ -13,6 +13,7 @@ export const WISH_CALLBACK_DATA = {
   bookWishItem: 'book_wish_item',
   unbookWishItem: 'unbooking_wish_item',
   get_another_user_wish_list_by_nickname: 'get_another_user_wish_list_by_nickname',
+  get_another_user_wish_list_by_id: 'get_another_user_wish_list_by_id',
   back: 'back',
 }
 

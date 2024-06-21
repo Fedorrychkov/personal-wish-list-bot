@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Action, Command, Ctx, Hears, Update } from 'nestjs-telegraf'
-import { WishEntity } from 'src/entities'
+import { UserEntity, WishEntity } from 'src/entities'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -11,7 +11,11 @@ import { WISH_CALLBACK_DATA, WISH_SCENE_BY_LINK_NAME, WISH_SCENE_GET_WISH_LIST_B
 @Injectable()
 export class WishMainSceneService {
   private readonly logger = new Logger(WishMainSceneService.name)
-  constructor(private readonly wishEntity: WishEntity, private readonly sharedService: SharedService) {}
+  constructor(
+    private readonly wishEntity: WishEntity,
+    private readonly userEntity: UserEntity,
+    private readonly sharedService: SharedService,
+  ) {}
 
   @Command(WISH_CALLBACK_DATA.addNewByLink)
   @Action(WISH_CALLBACK_DATA.addNewByLink)
@@ -48,6 +52,16 @@ export class WishMainSceneService {
     const items = await this.wishEntity.findAll({ userId })
 
     await this.sharedService.showWishList(ctx, items)
+  }
+
+  @Command(new RegExp(WISH_CALLBACK_DATA.get_another_user_wish_list_by_id))
+  @Action(new RegExp(WISH_CALLBACK_DATA.get_another_user_wish_list_by_id))
+  async getAllUserWishList(@Ctx() ctx: SceneContext) {
+    const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
+
+    const [items, user] = await Promise.all([this.wishEntity.findAll({ userId: id }), this.userEntity.get(id)])
+
+    await this.sharedService.showWishList(ctx, items, user)
   }
 
   @Hears(/.*/)

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Action, Ctx, Update } from 'nestjs-telegraf'
-import { getMainKeyboards } from 'src/constants'
-import { WishDocument, WishEntity } from 'src/entities'
+import { getAnotherUserWishListById, getDeleteMessageToSubscriber, getMainKeyboards } from 'src/constants'
+import { UserEntity, WishDocument, WishEntity } from 'src/entities'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -19,6 +19,7 @@ import {
 export class WishItemEditService {
   constructor(
     private readonly wishEntity: WishEntity,
+    private readonly userEntity: UserEntity,
     private readonly sharedService: SharedService,
     private readonly customConfigService: CustomConfigService,
   ) {}
@@ -127,6 +128,27 @@ export class WishItemEditService {
         inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
       },
     })
+
+    /**
+     * При удалении желания, подписчку желания отправляется уведомление в чат
+     */
+    if (wish?.isBooked && wish.bookedUserId !== wish.userId) {
+      const [user, subscribedUser] = await Promise.all([
+        this.userEntity.get(wish.userId),
+        this.userEntity.get(wish.bookedUserId),
+      ])
+
+      const text = getDeleteMessageToSubscriber(wish?.name, user?.username)
+
+      await ctx.telegram.sendMessage(subscribedUser?.chatId, text, {
+        reply_markup: {
+          inline_keyboard: [
+            ...getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+            getAnotherUserWishListById(user?.id, user?.username),
+          ],
+        },
+      })
+    }
   }
 
   @Action(new RegExp(WISH_CALLBACK_DATA.back))

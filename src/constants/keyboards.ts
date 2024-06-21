@@ -8,6 +8,13 @@ export const getMainOpenWebAppButton = (url: string, customText?: string) => ({
   web_app: { url },
 })
 
+export const getAnotherUserWishListById = (userId: string, username?: string) => [
+  {
+    text: `Посмотреть желания пользователя ${username ? `@${username}` : ''}`,
+    callback_data: `${WISH_CALLBACK_DATA.get_another_user_wish_list_by_id} ${userId}`,
+  },
+]
+
 export const getMainKeyboards = ({ webAppUrl }: KeyboardType) => [
   [{ text: 'Управление желаниями', callback_data: WISH_CALLBACK_DATA.openWishScene }],
   [{ text: 'Поделиться по ссылке', callback_data: WISH_CALLBACK_DATA.shareWishList }],

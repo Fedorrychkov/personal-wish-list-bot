@@ -13,3 +13,14 @@ export const getWishItemText = (wish: WishDocument, options?: { apiUrl?: string 
 Выберите действие
 `
 }
+
+export const getDeleteMessageToSubscriber = (wishName: string, username: string) => {
+  const text = `
+Пользователь: @${username}, которому вы хотели подарить:
+${wishName || 'Название не установлено'}
+Только что удалил свое желание.
+Проверьте актуальный список желаний пользователя!
+`
+
+  return text
+}
