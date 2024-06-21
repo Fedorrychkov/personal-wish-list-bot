@@ -54,7 +54,12 @@ export class SharedService {
       reply_markup: {
         inline_keyboard:
           wish.userId === userId
-            ? getOwnerWishItemKeyboard(wish.id, wish, userId)
+            ? getOwnerWishItemKeyboard({
+                id: wish.id,
+                wish,
+                senderUserId: userId,
+                webAppUrl: this.customConfigService.miniAppUrl,
+              })
             : getSharedWishItemKeyboard(wish.id, wish, userId),
       },
     }
@@ -70,7 +75,7 @@ ${wish?.isBooked ? '\n*забронировано*' : ''}${wish?.isBooked && wis
 ${appendedText}
 `
 
-        await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, { ...props, parse_mode: 'MarkdownV2' })
+        await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, { ...props, parse_mode: 'Markdown' })
 
         return
       }
@@ -142,7 +147,7 @@ ${appendedText}
         `${response.name}\nС изображением: ${response?.imageUrl}\n\nдобавлен в ваш список желаний!`,
         {
           reply_markup: {
-            inline_keyboard: getWishItemKeyboard(response.id),
+            inline_keyboard: getWishItemKeyboard(response.id, this.customConfigService.miniAppUrl),
           },
         },
       )
@@ -158,6 +163,20 @@ ${appendedText}
   ) {
     const { wishId: id, type = 'edit', messageId } = options || {}
     const wish = await this.wishEntity.get(id)
+
+    if (!wish) {
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        messageId,
+        '0',
+        'Желание невозможно отредактировать, так как оно уже удалено',
+        {
+          reply_markup: {
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          },
+        },
+      )
+    }
 
     const text = getWishItemText(wish, { apiUrl: this.customConfigService.apiUrl })
 

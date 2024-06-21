@@ -3,8 +3,8 @@ import { WISH_CALLBACK_DATA } from 'src/scenes/wish/constants'
 
 import { KeyboardType } from './types'
 
-export const getMainOpenWebAppButton = (url: string) => ({
-  text: 'Web App',
+export const getMainOpenWebAppButton = (url: string, customText?: string) => ({
+  text: customText || 'Web App',
   web_app: { url },
 })
 
@@ -26,12 +26,13 @@ export const getWishSceneKeyboards = () => [
   ],
 ]
 
-export const getWishItemKeyboard = (id: string) => [
+export const getWishItemKeyboard = (id: string, webAppUrl: string) => [
   [
     { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${id}` },
     { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${id}` },
   ],
   [{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
+  ...getMainKeyboards({ webAppUrl: `${webAppUrl}/wish/${id}` }),
 ]
 
 export const getEditWishItemKeyboard = (id: string) => [
@@ -54,10 +55,21 @@ export const backBtn = { text: 'Назад', callback_data: WISH_CALLBACK_DATA.b
 
 export const getSceneNavigationKeyboard = (props: KeyboardType) => [...getMainKeyboards(props), [backBtn]]
 
-export const getOwnerWishItemKeyboard = (id: string, wish?: WishDocument, senderUserId?: string) => {
+export const getOwnerWishItemKeyboard = ({
+  id,
+  wish,
+  senderUserId,
+  webAppUrl,
+}: {
+  id: string
+  wish?: WishDocument
+  senderUserId?: string
+  webAppUrl: string
+}) => {
   const defaultCommands = [
     { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${id}` },
     { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${id}` },
+    getMainOpenWebAppButton(`${webAppUrl}/wish/${id}`),
   ]
 
   if (!wish) {

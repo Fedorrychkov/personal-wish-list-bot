@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Action, Ctx, Update } from 'nestjs-telegraf'
 import { getMainKeyboards } from 'src/constants'
-import { WishEntity } from 'src/entities'
+import { WishDocument, WishEntity } from 'src/entities'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -23,11 +23,35 @@ export class WishItemEditService {
     private readonly customConfigService: CustomConfigService,
   ) {}
 
+  private async validateAvailabilityWishAndSendErrorMessage(@Ctx() ctx: SceneContext, wish: WishDocument) {
+    const handleSendError = async () => {
+      await ctx.editMessageText(`${ctx?.text}\n\nЖелание уже удалено`, {
+        reply_markup: {
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+        },
+      })
+    }
+
+    if (!wish) {
+      await handleSendError()
+
+      return false
+    }
+
+    return true
+  }
+
   @Action(new RegExp(WISH_CALLBACK_DATA.editWishItemName))
   async editWishItemName(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
 
     const wish = await this.wishEntity.get(id)
+
+    const isAvailable = await this.validateAvailabilityWishAndSendErrorMessage(ctx, wish)
+
+    if (!isAvailable) {
+      return
+    }
 
     await ctx.scene.enter(WISH_SCENE_EDIT_NAME_SCENE, { wish, messageId: ctx?.msgId })
   }
@@ -37,6 +61,12 @@ export class WishItemEditService {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const wish = await this.wishEntity.get(id)
 
+    const isAvailable = await this.validateAvailabilityWishAndSendErrorMessage(ctx, wish)
+
+    if (!isAvailable) {
+      return
+    }
+
     await ctx.scene.enter(WISH_SCENE_EDIT_LINK_SCENE, { wish, messageId: ctx?.msgId })
   }
 
@@ -45,6 +75,12 @@ export class WishItemEditService {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const wish = await this.wishEntity.get(id)
 
+    const isAvailable = await this.validateAvailabilityWishAndSendErrorMessage(ctx, wish)
+
+    if (!isAvailable) {
+      return
+    }
+
     await ctx.scene.enter(WISH_SCENE_EDIT_IMAGE_URL_SCENE, { wish, messageId: ctx?.msgId })
   }
 
@@ -52,6 +88,12 @@ export class WishItemEditService {
   async editWishItemDescription(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const wish = await this.wishEntity.get(id)
+
+    const isAvailable = await this.validateAvailabilityWishAndSendErrorMessage(ctx, wish)
+
+    if (!isAvailable) {
+      return
+    }
 
     await ctx.scene.enter(WISH_SCENE_EDIT_DESCRIPTION_SCENE, { wish, messageId: ctx?.msgId })
   }
@@ -63,7 +105,7 @@ export class WishItemEditService {
     if (!id) {
       await ctx.editMessageText(`${ctx?.text}\n\nУдалить не удалось`, {
         reply_markup: {
-          inline_keyboard: [[{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }]],
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
 
@@ -71,11 +113,18 @@ export class WishItemEditService {
     }
 
     const wish = await this.wishEntity.get(id)
+
+    const isAvailable = await this.validateAvailabilityWishAndSendErrorMessage(ctx, wish)
+
+    if (!isAvailable) {
+      return
+    }
+
     await this.wishEntity.delete(id)
 
     await ctx.editMessageText(`${wish?.name}\nУспешно удален!`, {
       reply_markup: {
-        inline_keyboard: [[{ text: 'Добавить еще', callback_data: WISH_CALLBACK_DATA.addNewByLink }]],
+        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
       },
     })
   }
@@ -95,6 +144,12 @@ export class WishItemEditService {
     }
 
     const wish = await this.wishEntity.get(id)
+
+    const isAvailable = await this.validateAvailabilityWishAndSendErrorMessage(ctx, wish)
+
+    if (!isAvailable) {
+      return
+    }
 
     await this.sharedService.showWishItem(ctx, { type: 'edit', wish, messageId: ctx?.msgId })
   }
