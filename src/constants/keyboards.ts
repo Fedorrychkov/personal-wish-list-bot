@@ -87,12 +87,23 @@ export const getOwnerWishItemKeyboard = ({
   return [defaultCommands]
 }
 
-export const getSharedWishItemKeyboard = (id: string, wish?: WishDocument, senderUserId?: string) => {
+export const getSharedWishItemKeyboard = ({
+  id,
+  wish,
+  senderUserId,
+  webAppUrl,
+}: {
+  id: string
+  wish?: WishDocument
+  senderUserId?: string
+  webAppUrl: string
+}) => {
   const defaultCommands = [
     {
       text: 'Хочу себе',
       callback_data: `${WISH_CALLBACK_DATA.copy_wish_item} ${id}`,
     },
+    getMainOpenWebAppButton(`${webAppUrl}/wish/${id}`, 'Web App'),
   ]
 
   if (!wish) {

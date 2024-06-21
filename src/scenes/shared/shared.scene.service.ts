@@ -60,7 +60,12 @@ export class SharedService {
                 senderUserId: userId,
                 webAppUrl: this.customConfigService.miniAppUrl,
               })
-            : getSharedWishItemKeyboard(wish.id, wish, userId),
+            : getSharedWishItemKeyboard({
+                id: wish.id,
+                wish,
+                senderUserId: userId,
+                webAppUrl: this.customConfigService.miniAppUrl,
+              }),
       },
     }
 
