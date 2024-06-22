@@ -10,6 +10,7 @@ import {
   getWishSceneKeyboards,
 } from 'src/constants/keyboards'
 import { UserDocument, WishDocument, WishEntity } from 'src/entities'
+import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -142,7 +143,7 @@ ${appendedText}
         userId: `${ctx?.from?.id}`,
         name: openGraph?.title || '',
         description: openGraph?.description || '',
-        imageUrl: openGraph?.imageUrl || '',
+        imageUrl: tryToGetUrlOrEmptyString(openGraph?.imageUrl) || '',
         link: url || '',
       })
 
