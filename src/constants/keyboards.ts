@@ -15,11 +15,20 @@ export const getAnotherUserWishListById = (userId: string, username?: string) =>
   },
 ]
 
-export const getMainKeyboards = ({ webAppUrl }: KeyboardType) => [
-  [{ text: 'Управление желаниями', callback_data: WISH_CALLBACK_DATA.openWishScene }],
-  [{ text: 'Поделиться по ссылке', callback_data: WISH_CALLBACK_DATA.shareWishList }],
-  [getMainOpenWebAppButton(webAppUrl)],
-]
+export const getMainKeyboards = (options?: KeyboardType) => {
+  const { webAppUrl } = options || {}
+
+  const btns = [
+    [{ text: 'Управление желаниями', callback_data: WISH_CALLBACK_DATA.openWishScene }],
+    [{ text: 'Поделиться по ссылке', callback_data: WISH_CALLBACK_DATA.shareWishList }],
+  ]
+
+  if (webAppUrl) {
+    return [...btns, [getMainOpenWebAppButton(webAppUrl)]]
+  }
+
+  return btns
+}
 
 export const getWishSceneKeyboards = () => [
   [{ text: 'Добавить по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
@@ -71,13 +80,16 @@ export const getOwnerWishItemKeyboard = ({
   id: string
   wish?: WishDocument
   senderUserId?: string
-  webAppUrl: string
+  webAppUrl?: string
 }) => {
   const defaultCommands = [
     { text: 'Редактировать', callback_data: `${WISH_CALLBACK_DATA.editWishItem} ${id}` },
     { text: 'Удалить', callback_data: `${WISH_CALLBACK_DATA.removeWishItem} ${id}` },
-    getMainOpenWebAppButton(`${webAppUrl}/wish/${id}`),
   ]
+
+  if (webAppUrl) {
+    defaultCommands.push(getMainOpenWebAppButton(`${webAppUrl}/wish/${id}`) as any)
+  }
 
   if (!wish) {
     return [defaultCommands, [{ text: 'Забронировать', callback_data: `${WISH_CALLBACK_DATA.bookWishItem} ${id}` }]]
@@ -103,15 +115,18 @@ export const getSharedWishItemKeyboard = ({
   id: string
   wish?: WishDocument
   senderUserId?: string
-  webAppUrl: string
+  webAppUrl?: string
 }) => {
   const defaultCommands = [
     {
       text: 'Хочу себе',
       callback_data: `${WISH_CALLBACK_DATA.copy_wish_item} ${id}`,
     },
-    getMainOpenWebAppButton(`${webAppUrl}/wish/${id}`, 'Web App'),
   ]
+
+  if (webAppUrl) {
+    defaultCommands.push(getMainOpenWebAppButton(`${webAppUrl}/wish/${id}`, 'Web App') as any)
+  }
 
   if (!wish) {
     return [defaultCommands]

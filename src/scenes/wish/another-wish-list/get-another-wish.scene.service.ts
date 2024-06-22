@@ -30,11 +30,15 @@ export class GetAnotherWishListByUserNameceneService {
   @Hears(/.*/)
   async getAnotherWishList(@Ctx() ctx: SceneContext) {
     const sharedUserName = (ctx?.text || '')?.trim?.()?.toLowerCase?.()?.replace?.('@', '') || ''
+    const chat = await ctx.getChat()
+    const isPrivate = chat?.type === 'private'
 
     if (!sharedUserName) {
       await ctx.reply('Произошла ошибка получения никнейма, попробуйте ввести еще раз, в формате @username', {
         reply_markup: {
-          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getSceneNavigationKeyboard(
+            isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
+          ),
         },
       })
 
@@ -44,7 +48,9 @@ export class GetAnotherWishListByUserNameceneService {
     if (sharedUserName.length > 600) {
       await ctx.reply('Никнейм не должен превышать 600 символов', {
         reply_markup: {
-          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getSceneNavigationKeyboard(
+            isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
+          ),
         },
       })
 
@@ -58,7 +64,9 @@ export class GetAnotherWishListByUserNameceneService {
         `Пользователя по никнейму: ${ctx?.text} нет в системе, попробуйте ввести другой никнейм, либо проверьте корректность никнейма`,
         {
           reply_markup: {
-            inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
+            inline_keyboard: getSceneNavigationKeyboard(
+              isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
+            ),
           },
         },
       )
@@ -75,10 +83,15 @@ export class GetAnotherWishListByUserNameceneService {
     if (sharedUser) {
       const items = await handleGetSharedUserWishList()
 
+      const chat = await ctx.getChat()
+      const isPrivate = chat?.type === 'private'
+
       if (!items?.length) {
         await ctx?.reply(`Список желаний пользователя с ником ${ctx?.text} пуст`, {
           reply_markup: {
-            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+            inline_keyboard: getMainKeyboards(
+              isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
+            ),
           },
         })
 

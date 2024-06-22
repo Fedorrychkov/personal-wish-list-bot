@@ -22,6 +22,9 @@ export class WishItemManipulationService {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const userId = `${ctx.from.id}`
 
+    const chat = await ctx.getChat()
+    const isPrivate = chat?.type === 'private'
+
     const defaultErrorOptions = {
       chatId: ctx.chat.id,
       msgId: ctx?.msgId,
@@ -29,7 +32,7 @@ export class WishItemManipulationService {
       text: 'Забронировать не удалось, желание не найдено, попробуйте другое желание или начните с начала',
       replyMarkup: {
         reply_markup: {
-          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
         },
       },
     }
@@ -92,6 +95,9 @@ export class WishItemManipulationService {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const userId = `${ctx.from.id}`
 
+    const chat = await ctx.getChat()
+    const isPrivate = chat?.type === 'private'
+
     const defaultErrorOptions = {
       chatId: ctx.chat.id,
       msgId: ctx?.msgId,
@@ -99,7 +105,7 @@ export class WishItemManipulationService {
       text: 'Отменить бронь не удалось, желание не найдено, начните с начала',
       replyMarkup: {
         reply_markup: {
-          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
         },
       },
     }

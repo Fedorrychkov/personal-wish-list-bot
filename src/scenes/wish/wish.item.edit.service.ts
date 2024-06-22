@@ -25,16 +25,34 @@ export class WishItemEditService {
   ) {}
 
   private async validateAvailabilityWishAndSendErrorMessage(@Ctx() ctx: SceneContext, wish: WishDocument) {
+    const chat = await ctx.getChat()
+    const isPrivate = chat?.type === 'private'
+
     const handleSendError = async () => {
       await ctx.editMessageText(`${ctx?.text}\n\nЖелание уже удалено`, {
         reply_markup: {
-          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
         },
       })
     }
 
     if (!wish) {
       await handleSendError()
+
+      return false
+    }
+
+    if (wish.userId !== ctx?.from?.id?.toString()) {
+      await ctx.editMessageText(
+        `Желание: ${wish?.name}\nпринадлежит другому пользователю.\nДля просмотра своих желаний выберите команду:`,
+        {
+          reply_markup: {
+            inline_keyboard: getMainKeyboards(
+              isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
+            ),
+          },
+        },
+      )
 
       return false
     }
@@ -102,11 +120,13 @@ export class WishItemEditService {
   @Action(new RegExp(WISH_CALLBACK_DATA.removeWishItem))
   async removeWishItem(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
+    const chat = await ctx.getChat()
+    const isPrivate = chat?.type === 'private'
 
     if (!id) {
       await ctx.editMessageText(`${ctx?.text}\n\nУдалить не удалось`, {
         reply_markup: {
-          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
         },
       })
 
@@ -125,7 +145,7 @@ export class WishItemEditService {
 
     await ctx.editMessageText(`${wish?.name}\nУспешно удален!`, {
       reply_markup: {
-        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+        inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
       },
     })
 
@@ -140,10 +160,13 @@ export class WishItemEditService {
 
       const text = getDeleteMessageToSubscriber(wish?.name, user?.username)
 
+      const chat = await ctx.getChat()
+      const isPrivate = chat?.type === 'private'
+
       await ctx.telegram.sendMessage(subscribedUser?.chatId, text, {
         reply_markup: {
           inline_keyboard: [
-            ...getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+            ...getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
             getAnotherUserWishListById(user?.id, user?.username),
           ],
         },
@@ -156,9 +179,12 @@ export class WishItemEditService {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
 
     if (!id) {
+      const chat = await ctx.getChat()
+      const isPrivate = chat?.type === 'private'
+
       await ctx.editMessageText(`${ctx?.text}\n\nВернуться назад не удалось, попробуйте сначала`, {
         reply_markup: {
-          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
         },
       })
 

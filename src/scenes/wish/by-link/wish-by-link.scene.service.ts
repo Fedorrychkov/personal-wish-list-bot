@@ -21,6 +21,7 @@ export class WishByLinkSceneService {
     const url = tryToGetUrlOrEmptyString(ctx?.text)
 
     if (!url) {
+      await ctx.deleteMessage(ctx?.msgId).catch()
       await ctx.reply(
         'Ссылка не распознана, формат домена должен быть вида https://google.com\nПопробуйте другую ссылку',
       )
@@ -30,11 +31,13 @@ export class WishByLinkSceneService {
 
     try {
       await this.sharedService.addWishItemByLink(ctx, { url })
+      await ctx.deleteMessage(ctx?.msgId).catch()
 
       // TODO: Придумать шаг пустой, без сообщений, куда идет продолжение работы с виш листами и без лишних сообщений!
       await ctx.scene.leave()
     } catch (error) {
       this.logger.error('[onAddByUrl]', error, { data: error?.response?.data })
+      await ctx.deleteMessage(ctx?.msgId).catch()
       await ctx.reply('Желание не удалось добавить, попробуйте другую ссылку')
     }
   }

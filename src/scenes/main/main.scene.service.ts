@@ -10,7 +10,7 @@ import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../shared'
 import { WISH_CALLBACK_DATA } from './../wish/constants'
-import { botWelcomeCommandsText, MAIN_CALLBACK_DATA, START_PAYLOAD_KEYS } from './constants'
+import { botWelcomeCommandsText, botWelcomeUserNameText, MAIN_CALLBACK_DATA, START_PAYLOAD_KEYS } from './constants'
 
 @Update()
 @Injectable()
@@ -31,16 +31,25 @@ export class MainSceneService {
     if (chat?.type !== 'private') {
       await ctx.reply('Извините, но бот пока умеет работать только в режиме личной переписки')
 
+      await ctx.reply(`${botWelcomeCommandsText}\nДля корректной работы перейдите в личку бота`)
+
       return
     }
 
     const id = `${ctx.from.id}`
 
     const startPayload = (ctx as any)?.startPayload?.toLowerCase?.() || ''
-    const isSharedWishList = startPayload.includes(START_PAYLOAD_KEYS.shareByUserName)
-    const sharedUserName = isSharedWishList ? startPayload?.replace(START_PAYLOAD_KEYS.shareByUserName, '') : ''
+    const isShareWishListById = startPayload.includes(START_PAYLOAD_KEYS.shareById)
+    const isSharedWishListByUsername = startPayload.includes(START_PAYLOAD_KEYS.shareByUserName)
+    const sharedUserName = isSharedWishListByUsername
+      ? startPayload?.replace(START_PAYLOAD_KEYS.shareByUserName, '')
+      : ''
+    const sharedUserId = isShareWishListById ? startPayload?.replace(START_PAYLOAD_KEYS.shareById, '') : ''
 
-    const [sharedUser] = sharedUserName ? await this.userEntity?.findAll({ username: sharedUserName }) : []
+    const [sharedUserByUserName] = sharedUserName ? await this.userEntity?.findAll({ username: sharedUserName }) : []
+    const sharedUserById = sharedUserId ? await this.userEntity?.get(sharedUserId) : null
+
+    const sharedUser = sharedUserByUserName || sharedUserById
 
     const isDifferentUsers = sharedUser?.id && sharedUser?.id !== id
 
@@ -71,7 +80,7 @@ export class MainSceneService {
       }
     }
 
-    if (!!user && !user.avatarUrl) {
+    const handleTryToCheckUserAvatar = async () => {
       const { doc, data } = await this.userEntity.getUpdate(user.id)
       const avatarUrl = await handleGetUserPhoto()
 
@@ -79,6 +88,10 @@ export class MainSceneService {
 
       const payload = this.userEntity.getValidProperties({ ...data, avatarUrl: file?.aliasUrl })
       await doc.update(payload)
+    }
+
+    if (!!user && !user.avatarUrl) {
+      handleTryToCheckUserAvatar()
     }
 
     if (!user && chat.id && chat?.type === 'private') {
@@ -97,7 +110,11 @@ export class MainSceneService {
       await this.userEntity.createOrUpdate(payload)
 
       await ctx.reply(
-        `@${ctx?.from?.username}, добро пожаловать в бот для хранения и шейринга своего списка желаний${botWelcomeCommandsText}`,
+        `@${
+          ctx?.from?.username
+        }, добро пожаловать в бот для хранения и шейринга своего списка желаний${botWelcomeCommandsText}${
+          payload?.username ? '' : botWelcomeUserNameText
+        }`,
       )
 
       if (sharedUser && isDifferentUsers) {
@@ -109,6 +126,15 @@ export class MainSceneService {
       }
 
       return
+    }
+
+    if (!user?.username && !!ctx?.from?.username?.toLowerCase()) {
+      const payload = this.userEntity.getValidProperties({
+        ...user,
+        username: ctx?.from?.username?.toLowerCase(),
+      })
+
+      this.userEntity.createOrUpdate(payload)
     }
 
     await ctx.reply(`С возвращением! Напоминаем:${botWelcomeCommandsText}`, {
@@ -140,6 +166,19 @@ export class MainSceneService {
   @Command(MAIN_CALLBACK_DATA.openWebApp)
   @Action(MAIN_CALLBACK_DATA.openWebApp)
   async openWebApp(@Ctx() ctx: SceneContext) {
+    const chat = await ctx.getChat()
+    const isPrivate = chat?.type === 'private'
+
+    if (!isPrivate) {
+      await ctx?.reply('Веб приложение можно открыть только в личной переписке', {
+        reply_markup: {
+          inline_keyboard: [[getMainOpenWebAppButton(this.customConfigService.miniAppUrl)]],
+        },
+      })
+
+      ctx?.deleteMessage(ctx?.msgId)
+    }
+
     await ctx?.reply('Чтобы открыть веб приложение, нажмите кнопку ниже', {
       reply_markup: {
         inline_keyboard: [[getMainOpenWebAppButton(this.customConfigService.miniAppUrl)]],
@@ -171,10 +210,15 @@ ${content}
 `
       : 'Не удалось найти CHANGELOG'
 
+    const chat = await ctx.getChat()
+    const isPrivate = chat?.type === 'private'
+
     await ctx?.reply(text, {
-      reply_markup: {
-        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
-      },
+      reply_markup: isPrivate
+        ? {
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          }
+        : undefined,
       parse_mode: 'Markdown',
     })
   }
@@ -183,10 +227,15 @@ ${content}
   @Action(WISH_CALLBACK_DATA.shareWishList)
   async shareSelfWishListByUsername(@Ctx() ctx: SceneContext) {
     const username = ctx?.from?.username
+    const id = ctx?.from?.id
+
+    const shareUserNameText = username ? `${START_PAYLOAD_KEYS.shareByUserName}${username}` : ''
+    const shareByIdText = id ? `${START_PAYLOAD_KEYS.shareById}${id}` : ''
+    const shareText = shareUserNameText || shareByIdText
 
     ctx.reply(`
 Отправьте ссылку на свой вишлист, чтобы поделиться им:
-https://t.me/personal_wish_list_bot?start=${START_PAYLOAD_KEYS.shareByUserName}${username}
+https://t.me/personal_wish_list_bot?start=${shareText}
 `)
   }
 

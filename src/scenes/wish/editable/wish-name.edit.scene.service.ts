@@ -48,10 +48,17 @@ export class WishNameEditSceneService {
     const state = (ctx.scene?.state || { wish: undefined }) as { wish: WishDocument | undefined; messageId: number }
     const { wish, messageId } = state || {}
 
+    const chat = await ctx.getChat()
+    const isPrivate = chat?.type === 'private'
+
     const handleUpdateLastMessage = async (text: string) => {
+      await ctx.deleteMessage(ctx?.msgId).catch()
+
       await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, {
         reply_markup: {
-          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getSceneNavigationKeyboard(
+            isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
+          ),
         },
         parse_mode: 'MarkdownV2',
       })
@@ -95,6 +102,8 @@ export class WishNameEditSceneService {
     await doc.update({ ...data, name, updatedAt })
 
     await this.sharedService.showEditWishItem(ctx, { wishId: wish.id, type: 'edit', messageId })
+
+    await ctx.deleteMessage(ctx?.msgId).catch()
 
     await ctx.scene.leave()
   }
