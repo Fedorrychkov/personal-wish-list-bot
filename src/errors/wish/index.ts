@@ -9,6 +9,6 @@ export const errors = {
   messages: {
     [codes.WISH_BOOKED_SOMEBODY]: 'You can not change book status, because somebody is booked it before',
     [codes.WISH_NOT_FOUND]: 'Wish is not found',
-    [codes.WISH_PERMISSION_DENIED]: 'You have not permission this wish',
+    [codes.WISH_PERMISSION_DENIED]: 'You have not permission to this wish',
   },
 }

@@ -12,6 +12,7 @@ import { TgInitUser } from 'src/types'
 import { Telegraf } from 'telegraf'
 
 import { CustomConfigService } from '../config'
+import { WishPatchDto } from './dto'
 
 @Injectable()
 export class WishService {
@@ -51,6 +52,27 @@ export class WishService {
     this.validateNotFound(response)
 
     return response
+  }
+
+  public async update(user: TgInitUser, id: string, body: WishPatchDto): Promise<WishDocument> {
+    const { data: response, doc } = await this.wishEntity.getUpdate(id)
+
+    this.validateNotFound(response)
+
+    if (response?.userId !== user?.id?.toString()) {
+      const code = ERROR_CODES.wish.codes.WISH_PERMISSION_DENIED
+      const message = ERROR_CODES.wish.messages[code]
+
+      throw new ForbiddenException({
+        code,
+        message,
+      })
+    }
+
+    const payload = this.wishEntity.getValidProperties({ ...response, ...body })
+    await doc.update(payload)
+
+    return payload
   }
 
   public async bookToggle(user: TgInitUser, id: string): Promise<WishDocument> {
