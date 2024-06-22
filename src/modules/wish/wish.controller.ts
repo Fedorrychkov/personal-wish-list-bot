@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param, UseGuards } from '@nestjs/common'
+import { Controller, Delete, Get, Param, Patch, UseGuards } from '@nestjs/common'
 import { UserContext } from 'src/decorator'
 import { WishDocument } from 'src/entities'
 import { TgDataGuard } from 'src/guards'
@@ -20,6 +20,12 @@ export class WishController {
   @Get('/:id')
   async item(@Param() params: { id: string }): Promise<WishDocument> {
     return this.wishService.getItem(params?.id)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Patch('/book/:id')
+  async bookToggle(@UserContext() user: TgInitUser, @Param() params: { id: string }): Promise<WishDocument> {
+    return this.wishService.bookToggle(user, params?.id)
   }
 
   @UseGuards(TgDataGuard)

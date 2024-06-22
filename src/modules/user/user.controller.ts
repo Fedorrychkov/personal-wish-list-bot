@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common'
+import { Controller, Get, Param, UseGuards } from '@nestjs/common'
 import { UserContext } from 'src/decorator'
 import { UserDocument } from 'src/entities/user/user.document'
 import { TgDataGuard } from 'src/guards'
@@ -12,7 +12,13 @@ export class UserController {
 
   @UseGuards(TgDataGuard)
   @Get('/')
-  async getUser(@UserContext() user: TgInitUser): Promise<UserDocument> {
+  async getCurrentUser(@UserContext() user: TgInitUser): Promise<UserDocument> {
     return this.userService.getUser(user)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Get('/:id')
+  async getUser(@UserContext() user: TgInitUser, @Param() params: { id: string }): Promise<UserDocument> {
+    return this.userService.getUser(user, params)
   }
 }

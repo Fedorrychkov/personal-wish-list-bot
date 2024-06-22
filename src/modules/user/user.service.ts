@@ -6,8 +6,8 @@ import { TgInitUser } from 'src/types'
 export class UserService {
   constructor(private userEntity: UserEntity) {}
 
-  public async getUser(user: TgInitUser): Promise<UserDocument> {
-    const { id } = user || {}
+  public async getUser(user: TgInitUser, params?: { id: string }): Promise<UserDocument> {
+    const { id } = params || user || {}
 
     if (!user || !id) {
       throw new NotFoundException('User not found')

@@ -1,6 +1,13 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import {
+  BadGatewayException,
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common'
 import { getAnotherUserWishListById, getDeleteMessageToSubscriber, getMainKeyboards } from 'src/constants'
 import { UserEntity, WishDocument, WishEntity } from 'src/entities'
+import { ERROR_CODES } from 'src/errors'
 import { TgInitUser } from 'src/types'
 import { Telegraf } from 'telegraf'
 
@@ -18,6 +25,18 @@ export class WishService {
     this.telegraf = new Telegraf(this.customConfigService.tgToken)
   }
 
+  private validateNotFound(wish: WishDocument) {
+    if (!wish) {
+      const code = ERROR_CODES.wish.codes.WISH_NOT_FOUND
+      const message = ERROR_CODES.wish.messages[code]
+
+      throw new NotFoundException({
+        code,
+        message,
+      })
+    }
+  }
+
   public async getList(user: TgInitUser): Promise<WishDocument[]> {
     const { id } = user || {}
 
@@ -29,18 +48,58 @@ export class WishService {
   public async getItem(id: string): Promise<WishDocument> {
     const response = await this.wishEntity.get(id)
 
+    this.validateNotFound(response)
+
     return response
+  }
+
+  public async bookToggle(user: TgInitUser, id: string): Promise<WishDocument> {
+    const { doc, data: response } = await this.wishEntity.getUpdate(id)
+
+    this.validateNotFound(response)
+
+    const userId = user?.id?.toString()
+
+    if (response?.isBooked && response?.bookedUserId !== userId) {
+      const code = ERROR_CODES.wish.codes.WISH_BOOKED_SOMEBODY
+      const message = ERROR_CODES.wish.messages[code]
+
+      throw new BadGatewayException({
+        code,
+        message,
+      })
+    }
+
+    if (response?.isBooked && response.bookedUserId === userId) {
+      const payload = this.wishEntity.getValidProperties({ ...response, isBooked: false, bookedUserId: null })
+      await doc.update(payload)
+
+      return payload
+    }
+
+    if (!response?.isBooked) {
+      const payload = this.wishEntity.getValidProperties({ ...response, isBooked: true, bookedUserId: userId })
+      await doc.update(payload)
+
+      return payload
+    }
+
+    throw new InternalServerErrorException('Something goes wrong...')
   }
 
   public async deleteItem(user: TgInitUser, id: string) {
     const response = await this.wishEntity.get(id)
 
-    if (!response) {
-      throw new NotFoundException('Wish is not found')
-    }
+    this.validateNotFound(response)
 
     if (response?.userId !== user?.id?.toString()) {
-      throw new ForbiddenException('You can not permission to delete this wish')
+      const code = ERROR_CODES.wish.codes.WISH_PERMISSION_DENIED
+      const message = ERROR_CODES.wish.messages[code]
+
+      throw new ForbiddenException({
+        code,
+        message,
+      })
     }
 
     const wish = response
