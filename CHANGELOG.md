@@ -1,5 +1,11 @@
 # Released
 
+## Version 0.0.4 (2023-06-22)
+- Add notifications for owner wish by somebody book and unbook
+- Add helper guards and chat type checking
+- Fix bug for wish links without protocol
+- Bugfixes
+
 ## Version 0.0.3 (2023-06-22)
 - Поддержка брони желания из веб приложения
 - Поддержка редактирования желания из веб приложения
