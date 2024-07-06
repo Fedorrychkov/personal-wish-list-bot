@@ -12,9 +12,15 @@ export class WishController {
   constructor(private readonly wishService: WishService) {}
 
   @UseGuards(TgDataGuard)
-  @Get('/')
+  @Get('/list')
   async list(@UserContext() user: TgInitUser): Promise<WishDocument[]> {
-    return this.wishService.getList(user)
+    return this.wishService.getList(user?.id)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Get('/list/:id')
+  async listByUserId(@Param() params: { id: string }): Promise<WishDocument[]> {
+    return this.wishService.getList(params?.id)
   }
 
   @UseGuards(TgDataGuard)

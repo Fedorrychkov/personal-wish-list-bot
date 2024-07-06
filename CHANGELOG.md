@@ -4,6 +4,7 @@
 - Add notifications for owner wish by somebody book and unbook
 - Add helper guards and chat type checking
 - Fix bug for wish links without protocol
+- Show another user wish list in mini-app
 - Bugfixes
 
 ## Version 0.0.3 (2023-06-22)

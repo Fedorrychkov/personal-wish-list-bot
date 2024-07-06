@@ -74,6 +74,14 @@ export class AppModule {
         method: RequestMethod.ALL,
       },
       {
+        path: 'v1/wish/list',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/wish/list/:id',
+        method: RequestMethod.ALL,
+      },
+      {
         path: 'v1/wish/:id',
         method: RequestMethod.ALL,
       },

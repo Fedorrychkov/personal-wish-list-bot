@@ -43,9 +43,7 @@ export class WishService {
     }
   }
 
-  public async getList(user: TgInitUser): Promise<WishDocument[]> {
-    const { id } = user || {}
-
+  public async getList(id: string | number): Promise<WishDocument[]> {
     const response = await this.wishEntity.findAll({ userId: id?.toString() })
 
     return response
