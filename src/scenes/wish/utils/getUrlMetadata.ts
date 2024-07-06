@@ -23,6 +23,8 @@ export const getUrlMetadata = async (url: string) => {
       wishUrl: url,
     }
 
+    console.log('Get Free Opengraph', { url })
+
     return openGraph
   } catch {
     // Fallback after developed
@@ -36,8 +38,12 @@ export const getUrlMetadata = async (url: string) => {
         wishUrl: url,
       }
 
+      console.log('Get OpenGraphIO', { url })
+
       return openGraph
     } catch {
+      console.error('Unavailable get opengraph meta', { url })
+
       return undefined
     }
   }

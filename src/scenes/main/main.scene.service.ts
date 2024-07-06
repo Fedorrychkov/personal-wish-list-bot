@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import * as fs from 'fs'
 import { Action, Command, Ctx, Help, On, Start, Update } from 'nestjs-telegraf'
 import { getMainKeyboards, getMainOpenWebAppButton } from 'src/constants/keyboards'
 import { UserEntity, WishEntity } from 'src/entities'
+import { getImageBuffer } from 'src/helpers'
 import { CustomConfigService } from 'src/modules'
-import { FileService } from 'src/modules/file'
+import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services/bucket'
 import { Context } from 'telegraf'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -15,18 +16,25 @@ import { botWelcomeCommandsText, botWelcomeUserNameText, MAIN_CALLBACK_DATA, STA
 @Update()
 @Injectable()
 export class MainSceneService {
+  private bucketService: BucketSharedService
+
   private logger = new Logger(MainSceneService.name)
   constructor(
     private readonly userEntity: UserEntity,
     private readonly wishEntity: WishEntity,
     private readonly sharedService: SharedService,
-    private readonly fileService: FileService,
     private readonly customConfigService: CustomConfigService,
-  ) {}
+    @Inject(DefaultBucketProvider.bucketName)
+    private readonly bucketProvider: BucketProvider,
+  ) {
+    this.bucketService = new BucketSharedService(this.bucketProvider.bucket, MainSceneService.name)
+  }
 
   @Start()
   async startCommand(@Ctx() ctx: SceneContext) {
     const chat = await ctx.getChat()
+
+    console.log(ctx, chat, 'ctx')
 
     if (chat?.type !== 'private') {
       await ctx.reply('Извините, но бот пока умеет работать только в режиме личной переписки')
@@ -84,10 +92,25 @@ export class MainSceneService {
       const { doc, data } = await this.userEntity.getUpdate(user.id)
       const avatarUrl = await handleGetUserPhoto()
 
-      const file = await this.fileService.createFile(avatarUrl)
+      if (!avatarUrl) {
+        return
+      }
 
-      const payload = this.userEntity.getValidProperties({ ...data, avatarUrl: file?.aliasUrl })
-      await doc.update(payload)
+      try {
+        const { buffer } = await getImageBuffer(avatarUrl)
+        const relativePath = await this.bucketService.saveFileByUrl(avatarUrl, `avatar/${data?.id}`, buffer)
+
+        try {
+          await this.bucketService.deleteFileByName(data?.avatarUrl, `avatar/${data?.id}`)
+        } catch (error) {
+          this.logger.error(error)
+        }
+
+        const payload = this.userEntity.getValidProperties({ ...data, avatarUrl: relativePath })
+        await doc.update(payload)
+      } catch (error) {
+        this.logger.error('Error with upload user avatar', avatarUrl)
+      }
     }
 
     if (!!user && !user.avatarUrl) {

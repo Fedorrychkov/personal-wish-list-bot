@@ -9,6 +9,7 @@ import { isProduction } from './env'
 import { CustomConfigModule, FileModule, UserModule } from './modules'
 import { MainSceneModule, WishSceneModule } from './scenes'
 import { FirestoreModule } from './services'
+import { BucketModule } from './services/bucket'
 
 const session = new LocalSession()
 
@@ -38,6 +39,14 @@ const session = new LocalSession()
           // },
         },
         middlewares: [session.middleware()],
+      }),
+      inject: [ConfigService],
+    }),
+    BucketModule.forRoot({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        projectId: configService.get<string>('FIREBASE_PROJECT_ID'),
+        keyFilename: configService.get<string>('SA_KEY'),
       }),
       inject: [ConfigService],
     }),

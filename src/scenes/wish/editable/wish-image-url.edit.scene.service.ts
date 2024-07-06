@@ -1,12 +1,12 @@
 import { Timestamp } from '@google-cloud/firestore'
-import { Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { Action, Ctx, Hears, On, Scene, SceneEnter } from 'nestjs-telegraf'
 import { backBtn, getSceneNavigationKeyboard } from 'src/constants'
 import { WishDocument, WishEntity } from 'src/entities'
-import { time } from 'src/helpers'
+import { getImageBuffer, time } from 'src/helpers'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { CustomConfigService } from 'src/modules'
-import { FileService } from 'src/modules/file'
+import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services/bucket'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../../shared/shared.scene.service'
@@ -15,14 +15,19 @@ import { WISH_CALLBACK_DATA, WISH_SCENE_EDIT_IMAGE_URL_SCENE } from '../constant
 @Scene(WISH_SCENE_EDIT_IMAGE_URL_SCENE)
 @Injectable()
 export class WishImageUrlEditSceneService {
+  private bucketService: BucketSharedService
   private logger = new Logger(WishImageUrlEditSceneService.name)
 
   constructor(
     private readonly wishEntity: WishEntity,
     private readonly sharedService: SharedService,
-    private readonly fileService: FileService,
     private readonly customConfigService: CustomConfigService,
-  ) {}
+
+    @Inject(DefaultBucketProvider.bucketName)
+    private readonly bucketProvider: BucketProvider,
+  ) {
+    this.bucketService = new BucketSharedService(this.bucketProvider.bucket, WishImageUrlEditSceneService.name)
+  }
 
   @SceneEnter()
   async enter(@Ctx() ctx: SceneContext) {
@@ -94,11 +99,28 @@ export class WishImageUrlEditSceneService {
     const dueDateMillis = time().valueOf()
     const updatedAt = Timestamp.fromMillis(dueDateMillis)
 
-    const file = await this.fileService.createFile(imageUrl?.href)
+    const { buffer } = await getImageBuffer(imageUrl?.href)
+    const relativePath = await this.bucketService.saveFileByUrl(imageUrl?.href, `wish/${data?.id}`, buffer)
 
-    await doc.update({ ...data, imageUrl: file?.aliasUrl, updatedAt })
+    if (!relativePath) {
+      await handleUpdateLastMessage('Произошла ошибка загрузки фото, попробуйте отправить другое')
+
+      return
+    }
+
+    try {
+      await this.bucketService.deleteFileByName(data?.imageUrl, `wish/${data?.id}`)
+    } catch (error) {
+      this.logger.error(error)
+    }
+
+    await doc.update({ ...data, imageUrl: relativePath, updatedAt })
 
     await this.sharedService.showEditWishItem(ctx, { wishId: wish.id, type: 'edit', messageId })
+
+    if (!(ctx?.update as any)?.callback_query) {
+      await ctx.deleteMessage(ctx?.msgId).catch()
+    }
 
     await ctx.scene.leave()
   }
