@@ -1,7 +1,10 @@
 # Released
 
 ## Version 0.0.4 (2023-06-22)
+- Добавление нового желания с последующим редактированием
+- Добавление нового желания в мини аппе
 - Add notifications for owner wish by somebody book and unbook
+- Добавление уведомлений при броне и отмене владельцу желания
 - Add helper guards and chat type checking
 - Fix bug for wish links without protocol
 - Show another user wish list in mini-app

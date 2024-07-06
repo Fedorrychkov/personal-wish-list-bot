@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import * as fs from 'fs'
 import { Action, Command, Ctx, Help, On, Start, Update } from 'nestjs-telegraf'
-import { getMainKeyboards, getMainOpenWebAppButton } from 'src/constants/keyboards'
+import { getMainKeyboards, getMainOpenWebAppButton, getWishItemKeyboard } from 'src/constants/keyboards'
 import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
 import { UserDocument, UserEntity, WishEntity } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
@@ -164,15 +164,45 @@ export class MainSceneService {
     }
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Help()
   async helpCommand(ctx: Context) {
     await ctx.reply(botWelcomeCommandsText)
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Command(WISH_CALLBACK_DATA.openWishScene)
   @Action(WISH_CALLBACK_DATA.openWishScene)
   async openWishScene(@Ctx() ctx: SceneContext) {
     await this.sharedService.enterWishScene(ctx)
+  }
+
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  @Command(WISH_CALLBACK_DATA.addNewEmptyWish)
+  @Action(WISH_CALLBACK_DATA.addNewEmptyWish)
+  async addNewEmptyWish(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
+    const payload = this.wishEntity.getValidProperties({
+      userId: userContext.id,
+      name: '',
+      description: '',
+      imageUrl: null,
+      link: '',
+    })
+
+    const response = await this.wishEntity.createOrUpdate(payload)
+
+    if (!(ctx?.update as any)?.callback_query) {
+      await ctx.deleteMessage(ctx?.msgId).catch()
+    }
+
+    await ctx.replyWithHTML('Новое желание добавлено, давайте его отредактируем?', {
+      reply_markup: {
+        inline_keyboard: getWishItemKeyboard(response.id, this.customConfigService.miniAppUrl),
+      },
+    })
   }
 
   @Command(MAIN_CALLBACK_DATA.openWebApp)

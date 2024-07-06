@@ -32,6 +32,7 @@ export const getMainKeyboards = (options?: KeyboardType) => {
 
 export const getWishSceneKeyboards = () => [
   [{ text: 'Добавить по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
+  [{ text: 'Добавить и заполнить позже', callback_data: WISH_CALLBACK_DATA.addNewEmptyWish }],
   [{ text: 'Список моих желания', callback_data: WISH_CALLBACK_DATA.getAllWishList }],
   [{ text: 'Поделиться желаниями', callback_data: WISH_CALLBACK_DATA.shareWishList }],
   [

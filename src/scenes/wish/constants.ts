@@ -1,6 +1,7 @@
 export const WISH_CALLBACK_DATA = {
   openWishScene: 'open_wish_scene',
   addNewByLink: 'add_new_wish_by_link_item',
+  addNewEmptyWish: 'add_new_empty_wish',
   removeWishItem: 'remove_wish_item',
   editWishItem: 'edit_wish_item',
   editWishItemName: 'edit_wish_item_name',

@@ -57,6 +57,12 @@ export class WishService {
     return response
   }
 
+  public async create(user: TgInitUser, body: WishPatchDto): Promise<WishDocument> {
+    const payload = this.wishEntity.getValidProperties({ name: '', ...body, userId: user?.id?.toString() })
+
+    return this.wishEntity.createOrUpdate(payload)
+  }
+
   public async update(user: TgInitUser, id: string, body: WishPatchDto): Promise<WishDocument> {
     const { data: response, doc } = await this.wishEntity.getUpdate(id)
 
