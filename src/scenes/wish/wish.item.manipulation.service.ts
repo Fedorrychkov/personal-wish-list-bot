@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import { Action, Ctx, Update } from 'nestjs-telegraf'
-import { getMainKeyboards } from 'src/constants'
-import { AvailableChatTypes } from 'src/decorator'
-import { WishEntity } from 'src/entities'
-import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
+import { getMainKeyboards, getOwnerWishItemKeyboard } from 'src/constants'
+import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
+import { UserDocument, WishEntity } from 'src/entities'
+import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -20,9 +20,9 @@ export class WishItemManipulationService {
   ) {}
 
   @AvailableChatTypes('private')
-  @UseSafeGuards(ChatTelegrafGuard)
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.bookWishItem))
-  async bookWishItem(@Ctx() ctx: SceneContext) {
+  async bookWishItem(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const userId = `${ctx.from.id}`
 
@@ -78,7 +78,8 @@ export class WishItemManipulationService {
       return
     }
 
-    const payload = this.wishEntity.getValidProperties({ ...data, isBooked: true, bookedUserId: userId })
+    const updatedWish = { ...data, isBooked: true, bookedUserId: userId }
+    const payload = this.wishEntity.getValidProperties(updatedWish)
     await doc.update(payload)
 
     await this.sharedService.showWishItem(ctx, {
@@ -88,13 +89,31 @@ export class WishItemManipulationService {
       appendedText: '\nВы успешно забронировали желание',
     })
 
+    if (updatedWish.userId !== userContext.id) {
+      await ctx.telegram.sendMessage(
+        data?.userId,
+        `Ваше желание: ${data?.name || 'Без названия'}, кто-то <b>Забронировал</b>`,
+        {
+          reply_markup: {
+            inline_keyboard: getOwnerWishItemKeyboard({
+              id: updatedWish.id,
+              wish: updatedWish,
+              senderUserId: userId,
+              webAppUrl: this.customConfigService.miniAppUrl,
+            }),
+          },
+          parse_mode: 'HTML',
+        },
+      )
+    }
+
     return
   }
 
   @AvailableChatTypes('private')
-  @UseSafeGuards(ChatTelegrafGuard)
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.unbookWishItem))
-  async unbookWishItem(@Ctx() ctx: SceneContext) {
+  async unbookWishItem(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const userId = `${ctx.from.id}`
 
@@ -150,7 +169,8 @@ export class WishItemManipulationService {
       return
     }
 
-    const payload = this.wishEntity.getValidProperties({ ...data, isBooked: false, bookedUserId: null })
+    const updatedWish = { ...data, isBooked: false, bookedUserId: null }
+    const payload = this.wishEntity.getValidProperties(updatedWish)
     await doc.update(payload)
 
     await this.sharedService.showWishItem(ctx, {
@@ -159,6 +179,24 @@ export class WishItemManipulationService {
       messageId: ctx?.msgId,
       appendedText: 'Вы успешно отменили бронирование желания',
     })
+
+    if (updatedWish.userId !== userContext.id) {
+      await ctx.telegram.sendMessage(
+        data?.userId,
+        `Ваше желание: ${data?.name || 'Без названия'}, больше не забронировано`,
+        {
+          reply_markup: {
+            inline_keyboard: getOwnerWishItemKeyboard({
+              id: updatedWish.id,
+              wish: updatedWish,
+              senderUserId: userId,
+              webAppUrl: this.customConfigService.miniAppUrl,
+            }),
+          },
+          parse_mode: 'HTML',
+        },
+      )
+    }
 
     return
   }

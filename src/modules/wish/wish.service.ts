@@ -5,7 +5,12 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common'
-import { getAnotherUserWishListById, getDeleteMessageToSubscriber, getMainKeyboards } from 'src/constants'
+import {
+  getAnotherUserWishListById,
+  getDeleteMessageToSubscriber,
+  getMainKeyboards,
+  getOwnerWishItemKeyboard,
+} from 'src/constants'
 import { UserEntity, WishDocument, WishEntity } from 'src/entities'
 import { ERROR_CODES } from 'src/errors'
 import { TgInitUser } from 'src/types'
@@ -93,15 +98,53 @@ export class WishService {
     }
 
     if (response?.isBooked && response.bookedUserId === userId) {
-      const payload = this.wishEntity.getValidProperties({ ...response, isBooked: false, bookedUserId: null })
+      const updatedWish = { ...response, isBooked: false, bookedUserId: null }
+      const payload = this.wishEntity.getValidProperties(updatedWish)
       await doc.update(payload)
+
+      if (user.id?.toString() !== updatedWish.userId) {
+        this.telegraf.telegram.sendMessage(
+          updatedWish?.userId,
+          `Ваше желание: ${updatedWish?.name || 'Без названия'}, больше не забронировано`,
+          {
+            reply_markup: {
+              inline_keyboard: getOwnerWishItemKeyboard({
+                id: updatedWish.id,
+                wish: updatedWish,
+                senderUserId: userId,
+                webAppUrl: this.customConfigService.miniAppUrl,
+              }),
+            },
+            parse_mode: 'HTML',
+          },
+        )
+      }
 
       return payload
     }
 
     if (!response?.isBooked) {
-      const payload = this.wishEntity.getValidProperties({ ...response, isBooked: true, bookedUserId: userId })
+      const updatedWish = { ...response, isBooked: true, bookedUserId: userId }
+      const payload = this.wishEntity.getValidProperties(updatedWish)
       await doc.update(payload)
+
+      if (user.id?.toString() !== updatedWish.userId) {
+        this.telegraf.telegram.sendMessage(
+          updatedWish?.userId,
+          `Ваше желание: ${updatedWish?.name || 'Без названия'}, кто-то <b>Забронировал</b>`,
+          {
+            reply_markup: {
+              inline_keyboard: getOwnerWishItemKeyboard({
+                id: updatedWish.id,
+                wish: updatedWish,
+                senderUserId: userId,
+                webAppUrl: this.customConfigService.miniAppUrl,
+              }),
+            },
+            parse_mode: 'HTML',
+          },
+        )
+      }
 
       return payload
     }
