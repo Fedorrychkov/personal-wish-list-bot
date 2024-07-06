@@ -51,9 +51,6 @@ export class SharedService {
     const { type = 'reply', wish, messageId, appendedText = '' } = options
     const userId = `${ctx.from.id}`
 
-    const chat = await ctx.getChat()
-    const isPrivate = chat?.type === 'private'
-
     const props = {
       reply_markup: {
         inline_keyboard:
@@ -62,13 +59,13 @@ export class SharedService {
                 id: wish.id,
                 wish,
                 senderUserId: userId,
-                webAppUrl: isPrivate ? this.customConfigService.miniAppUrl : undefined,
+                webAppUrl: this.customConfigService.miniAppUrl,
               })
             : getSharedWishItemKeyboard({
                 id: wish.id,
                 wish,
                 senderUserId: userId,
-                webAppUrl: isPrivate ? this.customConfigService.miniAppUrl : undefined,
+                webAppUrl: this.customConfigService.miniAppUrl,
               }),
       },
     }
@@ -104,9 +101,6 @@ ${appendedText}
 
   async showWishList(@Ctx() ctx: SceneContext, wishList: WishDocument[], sharedUser?: UserDocument) {
     if (!wishList?.length) {
-      const chat = await ctx.getChat()
-      const isPrivate = chat?.type === 'private'
-
       await ctx.telegram.editMessageText(
         ctx.chat.id,
         ctx?.msgId,
@@ -114,9 +108,7 @@ ${appendedText}
         'Список желаний пуст, ловите доступные команды:',
         {
           reply_markup: {
-            inline_keyboard: getMainKeyboards(
-              isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
-            ),
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
           },
         },
       )
@@ -182,9 +174,6 @@ ${appendedText}
     const wish = await this.wishEntity.get(id)
 
     if (!wish) {
-      const chat = await ctx.getChat()
-      const isPrivate = chat?.type === 'private'
-
       await ctx.telegram.editMessageText(
         ctx.chat.id,
         messageId,
@@ -192,9 +181,7 @@ ${appendedText}
         'Желание невозможно отредактировать, так как оно уже удалено',
         {
           reply_markup: {
-            inline_keyboard: getMainKeyboards(
-              isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
-            ),
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
           },
         },
       )

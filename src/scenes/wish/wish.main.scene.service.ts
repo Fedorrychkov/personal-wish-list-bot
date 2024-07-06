@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Action, Command, Ctx, Hears, Update } from 'nestjs-telegraf'
+import { AvailableChatTypes } from 'src/decorator'
 import { UserEntity, WishEntity } from 'src/entities'
+import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -42,6 +44,8 @@ export class WishMainSceneService {
     await ctx.scene.enter(WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE, { messageId: ctx?.msgId })
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Command(WISH_CALLBACK_DATA.getAllWishList)
   @Action(WISH_CALLBACK_DATA.getAllWishList)
   async getAllWishList(@Ctx() ctx: SceneContext) {

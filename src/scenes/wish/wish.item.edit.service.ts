@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import { Action, Ctx, Update } from 'nestjs-telegraf'
 import { getAnotherUserWishListById, getDeleteMessageToSubscriber, getMainKeyboards } from 'src/constants'
+import { AvailableChatTypes } from 'src/decorator'
 import { UserEntity, WishDocument, WishEntity } from 'src/entities'
+import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -24,14 +26,13 @@ export class WishItemEditService {
     private readonly customConfigService: CustomConfigService,
   ) {}
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   private async validateAvailabilityWishAndSendErrorMessage(@Ctx() ctx: SceneContext, wish: WishDocument) {
-    const chat = await ctx.getChat()
-    const isPrivate = chat?.type === 'private'
-
     const handleSendError = async () => {
       await ctx.editMessageText(`${ctx?.text}\n\nЖелание уже удалено`, {
         reply_markup: {
-          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
     }
@@ -47,9 +48,7 @@ export class WishItemEditService {
         `Желание: ${wish?.name}\nпринадлежит другому пользователю.\nДля просмотра своих желаний выберите команду:`,
         {
           reply_markup: {
-            inline_keyboard: getMainKeyboards(
-              isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
-            ),
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
           },
         },
       )
@@ -117,16 +116,16 @@ export class WishItemEditService {
     await ctx.scene.enter(WISH_SCENE_EDIT_DESCRIPTION_SCENE, { wish, messageId: ctx?.msgId })
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.removeWishItem))
   async removeWishItem(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
-    const chat = await ctx.getChat()
-    const isPrivate = chat?.type === 'private'
 
     if (!id) {
       await ctx.editMessageText(`${ctx?.text}\n\nУдалить не удалось`, {
         reply_markup: {
-          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
 
@@ -145,7 +144,7 @@ export class WishItemEditService {
 
     await ctx.editMessageText(`${wish?.name}\nУспешно удален!`, {
       reply_markup: {
-        inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
+        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
       },
     })
 
@@ -160,13 +159,10 @@ export class WishItemEditService {
 
       const text = getDeleteMessageToSubscriber(wish?.name, user?.username)
 
-      const chat = await ctx.getChat()
-      const isPrivate = chat?.type === 'private'
-
       await ctx.telegram.sendMessage(subscribedUser?.chatId, text, {
         reply_markup: {
           inline_keyboard: [
-            ...getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
+            ...getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
             getAnotherUserWishListById(user?.id, user?.username),
           ],
         },
@@ -174,17 +170,18 @@ export class WishItemEditService {
     }
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.back))
   async handleShowWishByBack(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
 
     if (!id) {
-      const chat = await ctx.getChat()
-      const isPrivate = chat?.type === 'private'
-
       await ctx.editMessageText(`${ctx?.text}\n\nВернуться назад не удалось, попробуйте сначала`, {
         reply_markup: {
-          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
 
@@ -202,6 +199,8 @@ export class WishItemEditService {
     await this.sharedService.showWishItem(ctx, { type: 'edit', wish, messageId: ctx?.msgId })
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.editWishItem))
   async editWishItem(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')

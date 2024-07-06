@@ -2,7 +2,9 @@ import { Timestamp } from '@google-cloud/firestore'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { Action, Ctx, Hears, On, Scene, SceneEnter } from 'nestjs-telegraf'
 import { backBtn, getSceneNavigationKeyboard } from 'src/constants'
+import { AvailableChatTypes } from 'src/decorator'
 import { WishDocument, WishEntity } from 'src/entities'
+import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { getImageBuffer, time } from 'src/helpers'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { CustomConfigService } from 'src/modules'
@@ -48,6 +50,8 @@ export class WishImageUrlEditSceneService {
     )
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Action(WISH_CALLBACK_DATA.back)
   async back(@Ctx() ctx: SceneContext) {
     const state = (ctx.scene?.state || { wish: undefined }) as { wish: WishDocument | undefined; messageId: number }
@@ -57,6 +61,8 @@ export class WishImageUrlEditSceneService {
     await ctx.scene.leave()
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @On('photo')
   async onLoadPhoto(@Ctx() ctx: SceneContext) {
     const state = (ctx.scene?.state || { wish: undefined }) as { wish: WishDocument | undefined; messageId: number }
@@ -67,14 +73,9 @@ export class WishImageUrlEditSceneService {
     const imageUrl = await ctx.telegram.getFileLink(imageId)
 
     const handleUpdateLastMessage = async (text: string) => {
-      const chat = await ctx.getChat()
-      const isPrivate = chat?.type === 'private'
-
       await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, {
         reply_markup: {
-          inline_keyboard: getSceneNavigationKeyboard(
-            isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
-          ),
+          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
         parse_mode: 'MarkdownV2',
       })
@@ -125,6 +126,8 @@ export class WishImageUrlEditSceneService {
     await ctx.scene.leave()
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Hears(/.*/)
   async editImageUrl(@Ctx() ctx: SceneContext) {
     const state = (ctx.scene?.state || { wish: undefined }) as { wish: WishDocument | undefined; messageId: number }

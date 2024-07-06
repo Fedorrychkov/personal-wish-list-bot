@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
 import { getMainKeyboards, getSceneNavigationKeyboard } from 'src/constants/keyboards'
+import { AvailableChatTypes } from 'src/decorator'
 import { UserEntity, WishEntity } from 'src/entities'
+import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { CustomConfigService } from 'src/modules'
 import { SharedService } from 'src/scenes/shared'
 import { SceneContext } from 'telegraf/typings/scenes'
@@ -27,18 +29,16 @@ export class GetAnotherWishListByUserNameceneService {
     await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', 'Введите никнейм для поиска, например @muzltoff')
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Hears(/.*/)
   async getAnotherWishList(@Ctx() ctx: SceneContext) {
     const sharedUserName = (ctx?.text || '')?.trim?.()?.toLowerCase?.()?.replace?.('@', '') || ''
-    const chat = await ctx.getChat()
-    const isPrivate = chat?.type === 'private'
 
     if (!sharedUserName) {
       await ctx.reply('Произошла ошибка получения никнейма, попробуйте ввести еще раз, в формате @username', {
         reply_markup: {
-          inline_keyboard: getSceneNavigationKeyboard(
-            isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
-          ),
+          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
 
@@ -48,9 +48,7 @@ export class GetAnotherWishListByUserNameceneService {
     if (sharedUserName.length > 600) {
       await ctx.reply('Никнейм не должен превышать 600 символов', {
         reply_markup: {
-          inline_keyboard: getSceneNavigationKeyboard(
-            isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
-          ),
+          inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       })
 
@@ -64,9 +62,7 @@ export class GetAnotherWishListByUserNameceneService {
         `Пользователя по никнейму: ${ctx?.text} нет в системе, попробуйте ввести другой никнейм, либо проверьте корректность никнейма`,
         {
           reply_markup: {
-            inline_keyboard: getSceneNavigationKeyboard(
-              isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
-            ),
+            inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
           },
         },
       )
@@ -83,15 +79,10 @@ export class GetAnotherWishListByUserNameceneService {
     if (sharedUser) {
       const items = await handleGetSharedUserWishList()
 
-      const chat = await ctx.getChat()
-      const isPrivate = chat?.type === 'private'
-
       if (!items?.length) {
         await ctx?.reply(`Список желаний пользователя с ником ${ctx?.text} пуст`, {
           reply_markup: {
-            inline_keyboard: getMainKeyboards(
-              isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined,
-            ),
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
           },
         })
 

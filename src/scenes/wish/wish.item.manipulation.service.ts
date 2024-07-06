@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common'
 import { Action, Ctx, Update } from 'nestjs-telegraf'
 import { getMainKeyboards } from 'src/constants'
+import { AvailableChatTypes } from 'src/decorator'
 import { WishEntity } from 'src/entities'
+import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -17,13 +19,12 @@ export class WishItemManipulationService {
     private readonly customConfigService: CustomConfigService,
   ) {}
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.bookWishItem))
   async bookWishItem(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const userId = `${ctx.from.id}`
-
-    const chat = await ctx.getChat()
-    const isPrivate = chat?.type === 'private'
 
     const defaultErrorOptions = {
       chatId: ctx.chat.id,
@@ -32,7 +33,7 @@ export class WishItemManipulationService {
       text: 'Забронировать не удалось, желание не найдено, попробуйте другое желание или начните с начала',
       replyMarkup: {
         reply_markup: {
-          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       },
     }
@@ -90,13 +91,12 @@ export class WishItemManipulationService {
     return
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.unbookWishItem))
   async unbookWishItem(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const userId = `${ctx.from.id}`
-
-    const chat = await ctx.getChat()
-    const isPrivate = chat?.type === 'private'
 
     const defaultErrorOptions = {
       chatId: ctx.chat.id,
@@ -105,7 +105,7 @@ export class WishItemManipulationService {
       text: 'Отменить бронь не удалось, желание не найдено, начните с начала',
       replyMarkup: {
         reply_markup: {
-          inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
         },
       },
     }

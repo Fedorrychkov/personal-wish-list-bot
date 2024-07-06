@@ -2,10 +2,13 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import * as fs from 'fs'
 import { Action, Command, Ctx, Help, On, Start, Update } from 'nestjs-telegraf'
 import { getMainKeyboards, getMainOpenWebAppButton } from 'src/constants/keyboards'
-import { UserEntity, WishEntity } from 'src/entities'
+import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
+import { UserDocument, UserEntity, WishEntity } from 'src/entities'
+import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { getImageBuffer } from 'src/helpers'
 import { CustomConfigService } from 'src/modules'
 import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services/bucket'
+import { ChatTelegrafContextType } from 'src/types'
 import { Context } from 'telegraf'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -31,19 +34,13 @@ export class MainSceneService {
   }
 
   @Start()
-  async startCommand(@Ctx() ctx: SceneContext) {
-    const chat = await ctx.getChat()
-
-    if (chat?.type !== 'private') {
-      await ctx.reply('Извините, но бот пока умеет работать только в режиме личной переписки')
-
-      await ctx.reply(`${botWelcomeCommandsText}\nДля корректной работы перейдите в личку бота`)
-
-      return
-    }
-
-    const id = `${ctx.from.id}`
-
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  async startCommand(
+    @Ctx() ctx: SceneContext,
+    @UserTelegrafContext() userContext: UserDocument,
+    @ChatTelegrafContext() chatContext: ChatTelegrafContextType,
+  ) {
     const startPayload = (ctx as any)?.startPayload?.toLowerCase?.() || ''
     const isShareWishListById = startPayload.includes(START_PAYLOAD_KEYS.shareById)
     const isSharedWishListByUsername = startPayload.includes(START_PAYLOAD_KEYS.shareByUserName)
@@ -57,7 +54,7 @@ export class MainSceneService {
 
     const sharedUser = sharedUserByUserName || sharedUserById
 
-    const isDifferentUsers = sharedUser?.id && sharedUser?.id !== id
+    const isDifferentUsers = sharedUser?.id && sharedUser?.id !== userContext?.id
 
     const handleGetSharedUserWishList = async () => {
       const items = await this.wishEntity.findAll({ userId: sharedUser?.id })
@@ -65,7 +62,7 @@ export class MainSceneService {
       return items
     }
 
-    const user = await this.userEntity.get(id)
+    const user = await this.userEntity.get(userContext?.id)
 
     const handleGetUserPhoto = async () => {
       if (!!user?.avatarUrl) {
@@ -115,16 +112,10 @@ export class MainSceneService {
       handleTryToCheckUserAvatar()
     }
 
-    if (!user && chat.id && chat?.type === 'private') {
+    if (!user && chatContext.chat.id && chatContext?.type === 'private') {
       const avatarUrl = await handleGetUserPhoto()
       const payload = this.userEntity.getValidProperties({
-        id,
-        username: ctx?.from?.username?.toLowerCase(),
-        firstName: ctx?.from?.first_name,
-        lastName: ctx?.from?.last_name,
-        chatId: `${ctx?.from.id}`,
-        isPremium: ctx?.from?.is_premium,
-        isBot: ctx?.from?.is_bot,
+        ...userContext,
         avatarUrl,
       })
 
@@ -186,20 +177,9 @@ export class MainSceneService {
 
   @Command(MAIN_CALLBACK_DATA.openWebApp)
   @Action(MAIN_CALLBACK_DATA.openWebApp)
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   async openWebApp(@Ctx() ctx: SceneContext) {
-    const chat = await ctx.getChat()
-    const isPrivate = chat?.type === 'private'
-
-    if (!isPrivate) {
-      await ctx?.reply('Веб приложение можно открыть только в личной переписке', {
-        reply_markup: {
-          inline_keyboard: [[getMainOpenWebAppButton(this.customConfigService.miniAppUrl)]],
-        },
-      })
-
-      ctx?.deleteMessage(ctx?.msgId).catch()
-    }
-
     await ctx?.reply('Чтобы открыть веб приложение, нажмите кнопку ниже', {
       reply_markup: {
         inline_keyboard: [[getMainOpenWebAppButton(this.customConfigService.miniAppUrl)]],
@@ -209,6 +189,8 @@ export class MainSceneService {
 
   @Command(MAIN_CALLBACK_DATA.getReleaseNotes)
   @Action(MAIN_CALLBACK_DATA.getReleaseNotes)
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   async getReleaseNotes(@Ctx() ctx: SceneContext) {
     const promise = async () =>
       new Promise((resolve) => {
@@ -231,21 +213,18 @@ ${content}
 `
       : 'Не удалось найти CHANGELOG'
 
-    const chat = await ctx.getChat()
-    const isPrivate = chat?.type === 'private'
-
     await ctx?.reply(text, {
-      reply_markup: isPrivate
-        ? {
-            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
-          }
-        : undefined,
+      reply_markup: {
+        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+      },
       parse_mode: 'Markdown',
     })
   }
 
   @Command(WISH_CALLBACK_DATA.shareWishList)
   @Action(WISH_CALLBACK_DATA.shareWishList)
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   async shareSelfWishListByUsername(@Ctx() ctx: SceneContext) {
     const username = ctx?.from?.username
     const id = ctx?.from?.id
@@ -261,6 +240,8 @@ https://t.me/personal_wish_list_bot?start=${shareText}
   }
 
   @On('photo')
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
   async onLoadPhoto(@Ctx() ctx: SceneContext) {
     ctx.reply('Чтобы установить фото, создайте новое желание или ортедактируйте существующее')
   }
