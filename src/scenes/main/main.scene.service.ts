@@ -197,7 +197,7 @@ export class MainSceneService {
         },
       })
 
-      ctx?.deleteMessage(ctx?.msgId)
+      ctx?.deleteMessage(ctx?.msgId).catch()
     }
 
     await ctx?.reply('Чтобы открыть веб приложение, нажмите кнопку ниже', {

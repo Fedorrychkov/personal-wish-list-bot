@@ -223,7 +223,7 @@ ${appendedText}
 
       return
     } else if (type === 'deleteAndReply') {
-      await ctx.telegram.deleteMessage(ctx.chat.id, messageId)
+      await ctx.telegram.deleteMessage(ctx.chat.id, messageId).catch()
 
       await ctx.replyWithHTML(text, props)
     }

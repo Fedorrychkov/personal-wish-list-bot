@@ -39,6 +39,10 @@ export class WishByLinkSceneService {
       this.logger.error('[onAddByUrl]', error, { data: error?.response?.data })
       await ctx.deleteMessage(ctx?.msgId).catch()
       await ctx.reply('Желание не удалось добавить, попробуйте другую ссылку')
+    } finally {
+      if (!(ctx?.update as any)?.callback_query) {
+        await ctx.deleteMessage(ctx?.msgId).catch()
+      }
     }
   }
 }
