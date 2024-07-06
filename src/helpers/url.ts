@@ -2,7 +2,8 @@ export const URL_REGEXP = /[-a-zA-Z0-9@:%._\\+~#=]{1,256}\.[a-zA-Z0-9()]{1,256}\
 
 export const tryToGetUrlOrEmptyString = (url?: string) => {
   if (typeof url === 'string' && url.match(URL_REGEXP)) {
-    const [finalUrl] = url.match(URL_REGEXP)
+    const match = url.match(URL_REGEXP)
+    const [finalUrl] = match
 
     try {
       const result = new Date(finalUrl).getTime()
@@ -12,7 +13,9 @@ export const tryToGetUrlOrEmptyString = (url?: string) => {
       }
     } catch {}
 
-    return finalUrl || null
+    const finalParsedUrl = finalUrl ? (finalUrl?.includes('http') ? finalUrl : `https://${finalUrl}`) : null
+
+    return finalParsedUrl
   }
 
   return null

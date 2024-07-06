@@ -34,8 +34,6 @@ export class MainSceneService {
   async startCommand(@Ctx() ctx: SceneContext) {
     const chat = await ctx.getChat()
 
-    console.log(ctx, chat, 'ctx')
-
     if (chat?.type !== 'private') {
       await ctx.reply('Извините, но бот пока умеет работать только в режиме личной переписки')
 

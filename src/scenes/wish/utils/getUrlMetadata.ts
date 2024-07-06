@@ -23,7 +23,7 @@ export const getUrlMetadata = async (url: string) => {
       wishUrl: url,
     }
 
-    console.log('Get Free Opengraph', { url })
+    console.info('Get Free Opengraph', { url })
 
     return openGraph
   } catch {
@@ -38,7 +38,7 @@ export const getUrlMetadata = async (url: string) => {
         wishUrl: url,
       }
 
-      console.log('Get OpenGraphIO', { url })
+      console.info('Get OpenGraphIO', { url })
 
       return openGraph
     } catch {
