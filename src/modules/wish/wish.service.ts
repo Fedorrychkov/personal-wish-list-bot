@@ -1,8 +1,10 @@
 import {
   BadGatewayException,
   ForbiddenException,
+  Inject,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common'
 import {
@@ -13,6 +15,7 @@ import {
 } from 'src/constants'
 import { UserEntity, WishDocument, WishEntity } from 'src/entities'
 import { ERROR_CODES } from 'src/errors'
+import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services'
 import { TgInitUser } from 'src/types'
 import { Telegraf } from 'telegraf'
 
@@ -22,13 +25,18 @@ import { WishPatchDto } from './dto'
 @Injectable()
 export class WishService {
   private telegraf: Telegraf
+  private bucketService: BucketSharedService
+  private readonly logger = new Logger(WishService.name)
 
   constructor(
     private readonly wishEntity: WishEntity,
     private readonly userEntity: UserEntity,
     private readonly customConfigService: CustomConfigService,
+    @Inject(DefaultBucketProvider.bucketName)
+    private readonly bucketProvider: BucketProvider,
   ) {
     this.telegraf = new Telegraf(this.customConfigService.tgToken)
+    this.bucketService = new BucketSharedService(this.bucketProvider.bucket, WishService.name)
   }
 
   private validateNotFound(wish: WishDocument) {
@@ -194,5 +202,64 @@ export class WishService {
     await this.wishEntity.delete(id)
 
     return { success: true }
+  }
+
+  public async updateImage(user: TgInitUser, wishId: string, file: Express.Multer.File): Promise<WishDocument> {
+    const { doc, data } = await this.wishEntity.getUpdate(wishId)
+
+    if (!data) {
+      throw new NotFoundException('Wish not found')
+    }
+
+    if (data.userId !== user?.id?.toString()) {
+      const code = ERROR_CODES.wish.codes.WISH_PERMISSION_DENIED
+      const message = ERROR_CODES.wish.messages[code]
+
+      throw new ForbiddenException({
+        code,
+        message,
+      })
+    }
+
+    const relativePath = await this.bucketService.saveFileByUrl(file?.originalname, `wish/${data?.id}`, file.buffer)
+
+    try {
+      await this.bucketService.deleteFileByName(data?.imageUrl, `wish/${data?.id}`)
+    } catch (error) {
+      this.logger.error(error)
+    }
+
+    const payload = this.wishEntity.getValidProperties({ ...data, imageUrl: relativePath })
+    await doc.update(payload)
+
+    return payload
+  }
+
+  public async removeImage(user: TgInitUser, wishId: string): Promise<WishDocument> {
+    const { doc, data } = await this.wishEntity.getUpdate(wishId)
+
+    if (!data) {
+      throw new NotFoundException('User not found')
+    }
+
+    if (data.userId !== user?.id?.toString()) {
+      const code = ERROR_CODES.wish.codes.WISH_PERMISSION_DENIED
+      const message = ERROR_CODES.wish.messages[code]
+
+      throw new ForbiddenException({
+        code,
+        message,
+      })
+    }
+
+    try {
+      await this.bucketService.deleteFileByName(data?.imageUrl, `wish/${data?.id}`)
+    } catch (error) {
+      this.logger.error(error)
+    }
+
+    doc.update({ imageUrl: null })
+
+    return { ...data, imageUrl: null }
   }
 }

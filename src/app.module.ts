@@ -90,6 +90,10 @@ export class AppModule {
         method: RequestMethod.ALL,
       },
       {
+        path: 'v1/wish/:id/image',
+        method: RequestMethod.ALL,
+      },
+      {
         path: 'v1/wish/book/:id',
         method: RequestMethod.ALL,
       },

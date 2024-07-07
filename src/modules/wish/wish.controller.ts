@@ -1,7 +1,23 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common'
+import {
+  Body,
+  Controller,
+  Delete,
+  FileTypeValidator,
+  Get,
+  MaxFileSizeValidator,
+  Param,
+  ParseFilePipe,
+  Patch,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import { UserContext } from 'src/decorator'
 import { WishDocument } from 'src/entities'
 import { TgDataGuard } from 'src/guards'
+import { getFileTypesRegexp, IMG_MAX_SIZE_IN_BYTE, listDefaultImageExt } from 'src/services'
 import { TgInitUser } from 'src/types'
 
 import { WishPatchDto } from './dto'
@@ -55,5 +71,30 @@ export class WishController {
   @Delete('/:id')
   async deleteItem(@UserContext() user: TgInitUser, @Param() params: { id: string }) {
     return this.wishService.deleteItem(user, params?.id)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Post('/:id/image')
+  @UseInterceptors(FileInterceptor('file', { limits: { files: 1 } }))
+  async uploadFileAndPassValidation(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: IMG_MAX_SIZE_IN_BYTE }),
+          new FileTypeValidator({ fileType: getFileTypesRegexp(listDefaultImageExt) }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @UserContext() user: TgInitUser,
+    @Param() params: { id: string },
+  ): Promise<WishDocument> {
+    return this.wishService.updateImage(user, params.id, file)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Delete('/:id/image')
+  async removeAvatar(@UserContext() user: TgInitUser, @Param() params: { id: string }): Promise<WishDocument> {
+    return this.wishService.removeImage(user, params.id)
   }
 }
