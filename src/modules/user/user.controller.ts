@@ -1,7 +1,21 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common'
+import {
+  Controller,
+  Delete,
+  FileTypeValidator,
+  Get,
+  MaxFileSizeValidator,
+  Param,
+  ParseFilePipe,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
 import { UserContext } from 'src/decorator'
 import { UserDocument } from 'src/entities/user/user.document'
 import { TgDataGuard } from 'src/guards'
+import { getFileTypesRegexp, IMG_MAX_SIZE_IN_BYTE, listDefaultImageExt } from 'src/services'
 import { TgInitUser } from 'src/types'
 
 import { UserService } from './user.service'
@@ -20,5 +34,29 @@ export class UserController {
   @Get('/:id')
   async getUser(@UserContext() user: TgInitUser, @Param() params: { id: string }): Promise<UserDocument> {
     return this.userService.getUser(user, params)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Post('/avatar')
+  @UseInterceptors(FileInterceptor('file', { limits: { files: 1 } }))
+  async uploadFileAndPassValidation(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: IMG_MAX_SIZE_IN_BYTE }),
+          new FileTypeValidator({ fileType: getFileTypesRegexp(listDefaultImageExt) }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @UserContext() user: TgInitUser,
+  ): Promise<UserDocument> {
+    return this.userService.updateAvatar(user, file)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Delete('/avatar')
+  async removeAvatar(@UserContext() user: TgInitUser): Promise<UserDocument> {
+    return this.userService.removeAvatar(user)
   }
 }

@@ -70,6 +70,10 @@ export class AppModule {
         method: RequestMethod.ALL,
       },
       {
+        path: 'v1/user/avatar',
+        method: RequestMethod.ALL,
+      },
+      {
         path: 'v1/wish',
         method: RequestMethod.ALL,
       },
