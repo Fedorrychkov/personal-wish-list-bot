@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common'
 import { Action, Ctx, Update } from 'nestjs-telegraf'
 import { getAnotherUserWishListById, getDeleteMessageToSubscriber, getMainKeyboards } from 'src/constants'
 import { AvailableChatTypes } from 'src/decorator'
 import { UserEntity, WishDocument, WishEntity } from 'src/entities'
 import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { CustomConfigService } from 'src/modules'
+import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../shared'
@@ -19,12 +20,20 @@ import {
 @Update()
 @Injectable()
 export class WishItemEditService {
+  private bucketService: BucketSharedService
+  private logger = new Logger(WishItemEditService.name)
+
   constructor(
     private readonly wishEntity: WishEntity,
     private readonly userEntity: UserEntity,
     private readonly sharedService: SharedService,
     private readonly customConfigService: CustomConfigService,
-  ) {}
+
+    @Inject(DefaultBucketProvider.bucketName)
+    private readonly bucketProvider: BucketProvider,
+  ) {
+    this.bucketService = new BucketSharedService(this.bucketProvider.bucket, WishItemEditService.name)
+  }
 
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard)
@@ -138,6 +147,12 @@ export class WishItemEditService {
 
     if (!isAvailable) {
       return
+    }
+
+    try {
+      await this.bucketService.deleteFileByName(wish?.imageUrl, `wish/${wish?.id}`)
+    } catch (error) {
+      this.logger.error(error)
     }
 
     await this.wishEntity.delete(id)

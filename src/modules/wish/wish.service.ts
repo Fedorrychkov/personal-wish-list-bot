@@ -199,6 +199,12 @@ export class WishService {
       })
     }
 
+    try {
+      await this.bucketService.deleteFileByName(wish?.imageUrl, `wish/${wish?.id}`)
+    } catch (error) {
+      this.logger.error(error)
+    }
+
     await this.wishEntity.delete(id)
 
     return { success: true }
