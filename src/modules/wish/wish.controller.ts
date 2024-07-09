@@ -17,7 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express'
 import { UserContext } from 'src/decorator'
 import { WishDocument } from 'src/entities'
 import { TgDataGuard } from 'src/guards'
-import { getFileTypesRegexp, IMG_MAX_SIZE_IN_BYTE, listDefaultImageExt } from 'src/services'
+import { getFileTypesRegexp, IMG_MAX_5MB_SIZE_IN_BYTE, listDefaultImageExt } from 'src/services'
 import { TgInitUser } from 'src/types'
 
 import { WishPatchDto } from './dto'
@@ -80,7 +80,7 @@ export class WishController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: IMG_MAX_SIZE_IN_BYTE }),
+          new MaxFileSizeValidator({ maxSize: IMG_MAX_5MB_SIZE_IN_BYTE }),
           new FileTypeValidator({ fileType: getFileTypesRegexp(listDefaultImageExt) }),
         ],
       }),
