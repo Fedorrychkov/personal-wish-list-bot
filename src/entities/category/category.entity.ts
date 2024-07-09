@@ -3,19 +3,19 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import firebase from 'firebase-admin'
 import { getUniqueId, time } from 'src/helpers'
 
-import { WishDocument } from './wish.document'
-import { WishFilter } from './wish.types'
+import { CategoryDocument } from './category.document'
+import { CategoryFilter } from './category.types'
 
 @Injectable()
-export class WishEntity {
-  private logger: Logger = new Logger(WishEntity.name)
+export class CategroyEntity {
+  private logger: Logger = new Logger(CategroyEntity.name)
 
   constructor(
-    @Inject(WishDocument.collectionName)
-    private collection: CollectionReference<WishDocument>,
+    @Inject(CategoryDocument.collectionName)
+    private collection: CollectionReference<CategoryDocument>,
   ) {}
 
-  async get(id: string): Promise<WishDocument | null> {
+  async get(id: string): Promise<CategoryDocument | null> {
     const snapshot = await this.collection.doc(id).get()
 
     if (!snapshot.exists) {
@@ -25,7 +25,7 @@ export class WishEntity {
     }
   }
 
-  async createOrUpdate(payload: WishDocument) {
+  async createOrUpdate(payload: CategoryDocument) {
     const document = await this.collection.doc(payload.id)
     await document.set(payload)
 
@@ -52,13 +52,13 @@ export class WishEntity {
 
   private findAllGenerator() {
     const collectionRef = this.collection
-    const query: firebase.firestore.Query<WishDocument> = collectionRef
+    const query: firebase.firestore.Query<CategoryDocument> = collectionRef
 
     return query
   }
 
-  async findAll(filter: WishFilter): Promise<WishDocument[]> {
-    const list: WishDocument[] = []
+  async findAll(filter: CategoryFilter): Promise<CategoryDocument[]> {
+    const list: CategoryDocument[] = []
     let query = this.findAllGenerator()
 
     query = query.orderBy('createdAt', 'desc')
@@ -73,7 +73,7 @@ export class WishEntity {
     return list
   }
 
-  getValidProperties(document: { id?: string } & Omit<WishDocument, 'id'>) {
+  getValidProperties(document: { id?: string } & Omit<CategoryDocument, 'id'>) {
     const dueDateMillis = time().valueOf()
     const createdAt = Timestamp.fromMillis(dueDateMillis)
 
@@ -81,12 +81,6 @@ export class WishEntity {
       id: document.id || getUniqueId(),
       userId: document.userId,
       name: document.name || null,
-      isBooked: document.isBooked || false,
-      bookedUserId: document.bookedUserId || null,
-      description: document.description || null,
-      link: document.link || null,
-      categoryId: document.categoryId || null,
-      imageUrl: document.imageUrl || null,
       createdAt: document.createdAt || createdAt,
       updatedAt: document.updatedAt || null,
     }
