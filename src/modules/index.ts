@@ -1,3 +1,4 @@
+export * from './category'
 export * from './config'
 export * from './file'
 export * from './user'
