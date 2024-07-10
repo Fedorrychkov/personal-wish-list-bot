@@ -21,7 +21,7 @@ export class WishMainSceneService {
 
   @Command(WISH_CALLBACK_DATA.addNewByLink)
   @Action(WISH_CALLBACK_DATA.addNewByLink)
-  async editItemName(@Ctx() ctx: SceneContext) {
+  async addNewByLink(@Ctx() ctx: SceneContext) {
     const text =
       'Пришлите в ответном сообщении ссылку на желание.\nПостараюсь добавить его в ваш список с автозаполнением (Название, Описание и картинка).\nЕсли что-то пойдет не так, вы всегда сможете отредактировать желание в ручную'
     const options = {

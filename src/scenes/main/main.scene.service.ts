@@ -56,12 +56,6 @@ export class MainSceneService {
 
     const isDifferentUsers = sharedUser?.id && sharedUser?.id !== userContext?.id
 
-    const handleGetSharedUserWishList = async () => {
-      const items = await this.wishEntity.findAll({ userId: sharedUser?.id })
-
-      return items
-    }
-
     const user = await this.userEntity.get(userContext?.id)
 
     const handleGetUserPhoto = async () => {
@@ -124,15 +118,24 @@ export class MainSceneService {
       await ctx.reply(
         `@${
           ctx?.from?.username
-        }, добро пожаловать в бот для хранения и шейринга своего списка желаний${botWelcomeCommandsText}${
+        }, добро пожаловать в бот списка желайни, введите или выберите команду /help, для знакомства с функционалом бота ${
           payload?.username ? '' : botWelcomeUserNameText
         }`,
       )
 
       if (sharedUser && isDifferentUsers) {
-        const items = await handleGetSharedUserWishList()
-
-        await this.sharedService.showWishList(ctx, items, sharedUser)
+        await ctx.reply(
+          `Список желаний пользователя: @${sharedUser?.username || sharedUser?.id} можно посмотреть в WebApp`,
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [getMainOpenWebAppButton(`${this.customConfigService.miniAppUrl}/user/${sharedUser?.id}`)],
+                [{ callback_data: MAIN_CALLBACK_DATA.menu, text: 'Меню' }],
+              ],
+            },
+            parse_mode: 'HTML',
+          },
+        )
 
         return
       }
@@ -149,23 +152,34 @@ export class MainSceneService {
       this.userEntity.createOrUpdate(payload)
     }
 
-    await ctx.reply(`С возвращением! Напоминаем:${botWelcomeCommandsText}`, {
-      reply_markup: {
-        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
-      },
-    })
+    if (!sharedUser) {
+      await ctx.reply('С возвращением! Чтобы посмотреть возможности бота, можете ввести или выбрать команду /help', {
+        reply_markup: {
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+        },
+      })
+    }
 
     if (sharedUser && isDifferentUsers) {
-      const items = await handleGetSharedUserWishList()
-
-      await this.sharedService.showWishList(ctx, items, sharedUser)
+      await ctx.reply(
+        `Список желаний пользователя: @${sharedUser?.username || sharedUser?.id} можно посмотреть в WebApp`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [getMainOpenWebAppButton(`${this.customConfigService.miniAppUrl}/user/${sharedUser?.id}`)],
+              [{ callback_data: MAIN_CALLBACK_DATA.menu, text: 'Меню' }],
+            ],
+          },
+          parse_mode: 'HTML',
+        },
+      )
 
       return
     }
   }
 
-  @Command('menu')
-  @Action('menu')
+  @Command(MAIN_CALLBACK_DATA.menu)
+  @Action(MAIN_CALLBACK_DATA.menu)
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async menu(@Ctx() ctx: SceneContext) {

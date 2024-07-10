@@ -1,17 +1,38 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Ctx, Hears, Scene } from 'nestjs-telegraf'
+import { Action, Ctx, Hears, Scene } from 'nestjs-telegraf'
+import { backBtn, getMainKeyboards } from 'src/constants'
+import { AvailableChatTypes } from 'src/decorator'
+import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
+import { CustomConfigService } from 'src/modules'
 import { SharedService } from 'src/scenes/shared'
 import { SceneContext } from 'telegraf/typings/scenes'
 
-import { WISH_SCENE_BY_LINK_NAME } from '../constants'
+import { WISH_CALLBACK_DATA, WISH_SCENE_BY_LINK_NAME } from '../constants'
 
 @Scene(WISH_SCENE_BY_LINK_NAME)
 @Injectable()
 export class WishByLinkSceneService {
   private logger = new Logger(WishByLinkSceneService.name)
 
-  constructor(private readonly sharedService: SharedService) {}
+  constructor(
+    private readonly sharedService: SharedService,
+    private readonly customConfigService: CustomConfigService,
+  ) {}
+
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
+  @Action(WISH_CALLBACK_DATA.back)
+  async back(@Ctx() ctx: SceneContext) {
+    await ctx.reply('<b>Доступные команды</b>', {
+      reply_markup: {
+        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+      },
+      parse_mode: 'HTML',
+    })
+
+    await ctx.scene.leave()
+  }
 
   /**
    * При получении сообщения в сцене, не подходящего ни под один формат, начинаем процесс с начала
@@ -23,11 +44,15 @@ export class WishByLinkSceneService {
     if (!url) {
       await ctx.deleteMessage(ctx?.msgId).catch()
       await ctx
-        .reply('Ссылка не распознана, формат домена должен быть вида https://google.com\nПопробуйте другую ссылку')
+        .reply('Ссылка не распознана, формат домена должен быть вида https://google.com\nПопробуйте другую ссылку', {
+          reply_markup: {
+            inline_keyboard: [[backBtn]],
+          },
+        })
         .then((response) => {
           setTimeout(() => {
             ctx?.deleteMessage(response?.message_id).catch()
-          })
+          }, 1000)
         })
 
       return
