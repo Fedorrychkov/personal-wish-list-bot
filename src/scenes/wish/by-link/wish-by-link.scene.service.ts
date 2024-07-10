@@ -22,9 +22,13 @@ export class WishByLinkSceneService {
 
     if (!url) {
       await ctx.deleteMessage(ctx?.msgId).catch()
-      await ctx.reply(
-        'Ссылка не распознана, формат домена должен быть вида https://google.com\nПопробуйте другую ссылку',
-      )
+      await ctx
+        .reply('Ссылка не распознана, формат домена должен быть вида https://google.com\nПопробуйте другую ссылку')
+        .then((response) => {
+          setTimeout(() => {
+            ctx?.deleteMessage(response?.message_id).catch()
+          })
+        })
 
       return
     }

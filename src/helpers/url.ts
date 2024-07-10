@@ -1,21 +1,39 @@
 export const URL_REGEXP = /[-a-zA-Z0-9@:%._\\+~#=]{1,256}\.[a-zA-Z0-9()]{1,256}\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)?/gi
 
+const isUrlValid = (string) => {
+  try {
+    new URL(string)
+
+    return true
+  } catch (err) {
+    return false
+  }
+}
+
+const isHttpValid = (str) => {
+  try {
+    const newUrl = new URL(str)
+
+    return newUrl.protocol === 'http:' || newUrl.protocol === 'https:'
+  } catch (err) {
+    return false
+  }
+}
+
 export const tryToGetUrlOrEmptyString = (url?: string) => {
   if (typeof url === 'string' && url.match(URL_REGEXP)) {
     const match = url.match(URL_REGEXP)
     const [finalUrl] = match
 
-    try {
-      const result = new Date(finalUrl).getTime()
+    const isValid = !!finalUrl && isUrlValid(url) && isHttpValid(url)
 
-      if (!Number.isNaN(result)) {
-        return null
-      }
-    } catch {}
+    if (isValid) {
+      const finalUrl = new URL(url)
 
-    const finalParsedUrl = finalUrl ? (finalUrl?.includes('http') ? finalUrl : `https://${finalUrl}`) : null
+      return finalUrl?.href
+    }
 
-    return finalParsedUrl
+    return null
   }
 
   return null
