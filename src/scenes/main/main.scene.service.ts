@@ -164,6 +164,19 @@ export class MainSceneService {
     }
   }
 
+  @Command('menu')
+  @Action('menu')
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  async menu(@Ctx() ctx: SceneContext) {
+    await ctx.reply('<b>Доступные команды</b>', {
+      reply_markup: {
+        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+      },
+      parse_mode: 'HTML',
+    })
+  }
+
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Help()
@@ -194,7 +207,7 @@ export class MainSceneService {
 
     const response = await this.wishEntity.createOrUpdate(payload)
 
-    if (!(ctx?.update as any)?.callback_query) {
+    if ((ctx?.update as any)?.callback_query) {
       await ctx.deleteMessage(ctx?.msgId).catch()
     }
 

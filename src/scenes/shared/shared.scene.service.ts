@@ -70,31 +70,23 @@ export class SharedService {
       },
     }
 
+    const descriptionText = wish?.description ? `<b>Описание: </b>${wish?.description?.slice(0, 50)}...` : ''
+    const linkText = wish.link
+      ? `<a href="${wish.link}">${wish.name || '<i>Название не установлено</i>'}</a>`
+      : `Ссылка на желание ${wish.name || '<i>без названия</<i>'} не установлена`
+    const messageText = `<b>Название: </b>${wish?.link ? linkText : wish.name}\n${descriptionText}${
+      wish?.isBooked ? `\n<b>забронировано${wish.bookedUserId === userId ? ' вами' : ''}</b>` : ''
+    }${appendedText}`
+
     if (type === 'edit') {
       if (messageId) {
-        const link = wish.link
-          ? `[${wish.name || 'Название не установлено'}](${wish.link})`
-          : 'Ссылка и название не распознаны, попробуйте отредактировать или удалить желание начав сначала'
-        const text = `
-${wish?.link ? link : wish.name || 'Название не установлено'}
-${wish?.isBooked ? '\n*забронировано*' : ''}${wish?.isBooked && wish?.bookedUserId === userId ? ' *вами*' : ''}
-${appendedText}
-`
-
-        await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', text, { ...props, parse_mode: 'Markdown' })
+        await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', messageText, { ...props, parse_mode: 'HTML' })
 
         return
       }
     }
 
-    const link = wish.link
-      ? `<a href="${wish.link}">${wish.name || 'Название не установлено'}</a>`
-      : `Ссылка на желание ${wish.name || 'без названия'} не установлена`
-    const text = `${wish?.link ? link : wish.name}${
-      wish?.isBooked ? `\n<b>забронировано${wish.bookedUserId === userId ? ' вами' : ''}</b>` : ''
-    }${appendedText}`
-
-    await ctx.replyWithHTML(text, props)
+    await ctx.replyWithHTML(messageText, props)
 
     return
   }
@@ -171,6 +163,7 @@ ${appendedText}
     options: { wishId: string; type: 'reply' | 'edit' | 'deleteAndReply'; messageId?: number },
   ) {
     const { wishId: id, type = 'edit', messageId } = options || {}
+
     const wish = await this.wishEntity.get(id)
 
     if (!wish) {
@@ -193,6 +186,7 @@ ${appendedText}
       reply_markup: {
         inline_keyboard: getEditWishItemKeyboard(id),
       },
+      parse_mode: 'HTML' as const,
     }
 
     if (type === 'edit') {

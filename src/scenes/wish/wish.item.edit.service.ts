@@ -157,11 +157,15 @@ export class WishItemEditService {
 
     await this.wishEntity.delete(id)
 
-    await ctx.editMessageText(`${wish?.name}\nУспешно удален!`, {
-      reply_markup: {
-        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
-      },
-    })
+    await ctx
+      .editMessageText(`${wish?.name} - Успешно удален!`, {
+        reply_markup: {
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+        },
+      })
+      .then(async () => {
+        setTimeout(() => ctx.deleteMessage(ctx?.msgId).catch(), 1000)
+      })
 
     /**
      * При удалении желания, подписчку желания отправляется уведомление в чат

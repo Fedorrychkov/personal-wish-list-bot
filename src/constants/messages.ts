@@ -5,12 +5,12 @@ export const getWishItemText = (wish: WishDocument, options?: { apiUrl?: string 
   const imageUrl = getValidFileUrl(wish.imageUrl, options?.apiUrl)
 
   return `
-Название: ${wish.name || 'Название не установлено'}
-Описание: ${wish.description || 'Описание не установлено'}
-Ссылка: ${wish.link || 'Ссылка на желание не установлена'}
-Ссылка на изображение: ${imageUrl || 'Ссылка на изображение не установлена'}
+<b>Название</b>: ${wish.name || '<i>Название не установлено</i>'}
+<b>Описание</b>: ${wish.description || '<i>Описание не установлено</i>'}
+<b>Ссылка</b>: ${wish.link || '<i>Ссылка на желание не установлена</i>'}
+<b>Ссылка на изображение</b>: ${imageUrl || '<i>Ссылка на изображение не установлена</i>'}
 
-Выберите действие
+<b>Выберите действие</b>
 `
 }
 
