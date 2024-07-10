@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
-import { getMainOpenWebAppButton, getSceneNavigationKeyboard } from 'src/constants/keyboards'
+import { Action, Ctx, Hears, Scene, SceneEnter } from 'nestjs-telegraf'
+import { backBtn, getMainKeyboards, getMainOpenWebAppButton } from 'src/constants/keyboards'
 import { AvailableChatTypes } from 'src/decorator'
 import { UserEntity } from 'src/entities'
 import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
@@ -8,7 +8,7 @@ import { CustomConfigService } from 'src/modules'
 import { MAIN_CALLBACK_DATA } from 'src/scenes/main/constants'
 import { SceneContext } from 'telegraf/typings/scenes'
 
-import { WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE } from '../constants'
+import { WISH_CALLBACK_DATA, WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE } from '../constants'
 
 @Scene(WISH_SCENE_GET_WISH_LIST_BY_USERNAME_SCENE)
 @Injectable()
@@ -21,7 +21,25 @@ export class GetAnotherWishListByUserNameceneService {
   async enter(@Ctx() ctx: SceneContext) {
     const state = (ctx.scene?.state || { wish: undefined }) as { messageId: number }
     const { messageId } = state || {}
-    await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', 'Введите никнейм для поиска, например @muzltoff')
+    await ctx.telegram.editMessageText(ctx.chat.id, messageId, '0', 'Введите никнейм для поиска, например @muzltoff', {
+      reply_markup: {
+        inline_keyboard: [[backBtn]],
+      },
+    })
+  }
+
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard)
+  @Action(WISH_CALLBACK_DATA.back)
+  async back(@Ctx() ctx: SceneContext) {
+    await ctx.reply('<b>Доступные команды</b>', {
+      reply_markup: {
+        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+      },
+      parse_mode: 'HTML',
+    })
+
+    await ctx.scene.leave()
   }
 
   @AvailableChatTypes('private')
@@ -36,7 +54,7 @@ export class GetAnotherWishListByUserNameceneService {
       await ctx
         .reply('Произошла ошибка получения никнейма, попробуйте ввести еще раз, в формате @username', {
           reply_markup: {
-            inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
+            inline_keyboard: [[backBtn]],
           },
         })
         .then((response) => {
@@ -52,7 +70,7 @@ export class GetAnotherWishListByUserNameceneService {
       await ctx
         .reply('Никнейм не должен превышать 600 символов', {
           reply_markup: {
-            inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
+            inline_keyboard: [[backBtn]],
           },
         })
         .then((response) => {
@@ -67,14 +85,20 @@ export class GetAnotherWishListByUserNameceneService {
     const [sharedUser] = sharedUserName ? await this.userEntity?.findAll({ username: sharedUserName }) : []
 
     if (!sharedUser) {
-      await ctx.reply(
-        `Пользователя по никнейму: ${ctx?.text} нет в системе, попробуйте ввести другой никнейм, либо проверьте корректность никнейма`,
-        {
-          reply_markup: {
-            inline_keyboard: getSceneNavigationKeyboard({ webAppUrl: this.customConfigService.miniAppUrl }),
+      await ctx
+        .reply(
+          `Пользователя по никнейму: ${ctx?.text} нет в системе, попробуйте ввести другой никнейм, либо проверьте корректность никнейма`,
+          {
+            reply_markup: {
+              inline_keyboard: [[backBtn]],
+            },
           },
-        },
-      )
+        )
+        .then((response) => {
+          setTimeout(async () => {
+            await ctx?.deleteMessage(response?.message_id)?.catch()
+          }, 2000)
+        })
 
       return
     }
