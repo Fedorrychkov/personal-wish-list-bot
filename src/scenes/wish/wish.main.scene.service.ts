@@ -70,15 +70,20 @@ export class WishMainSceneService {
   async onAnyAnswer(@Ctx() ctx: SceneContext) {
     const url = tryToGetUrlOrEmptyString(ctx?.text)
 
+    ctx?.deleteMessage(ctx?.msgId)?.catch()
+
     if (!url) {
-      await ctx.reply(
-        'Команда не распознана, чтобы добавить новое желание, пришлите ссылку или нажмите на кнопку списка',
-        {
+      await ctx
+        .reply('Команда не распознана, чтобы добавить новое желание, пришлите ссылку или нажмите на кнопку или /menu', {
           reply_markup: {
             inline_keyboard: [[{ text: 'Желания', callback_data: WISH_CALLBACK_DATA.openWishScene }]],
           },
-        },
-      )
+        })
+        .then((response) => {
+          setTimeout(() => {
+            ctx?.deleteMessage(response?.message_id)?.catch()
+          }, 1000)
+        })
 
       return
     }
@@ -87,11 +92,11 @@ export class WishMainSceneService {
       await this.sharedService.addWishItemByLink(ctx, { url })
     } catch (error) {
       this.logger.error('[onAddByUrl]', error, { data: error?.response?.data })
-      await ctx.reply('Желание не удалось добавить, попробуйте другую ссылку')
-    } finally {
-      if (!(ctx?.update as any)?.callback_query) {
-        await ctx.deleteMessage(ctx?.msgId).catch()
-      }
+      await ctx.reply('Желание не удалось добавить, попробуйте другую ссылку')?.then((response) => {
+        setTimeout(() => {
+          ctx?.deleteMessage(response?.message_id)?.catch()
+        }, 1000)
+      })
     }
   }
 }
