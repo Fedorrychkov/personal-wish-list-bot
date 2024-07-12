@@ -1,4 +1,5 @@
 export * from './category'
+export * from './favorite'
 export * from './file'
 export * from './user'
 export * from './wish'

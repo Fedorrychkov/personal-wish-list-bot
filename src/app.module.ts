@@ -6,7 +6,7 @@ import { TelegrafModule } from 'nestjs-telegraf'
 import * as LocalSession from 'telegraf-session-local'
 
 import { isProduction } from './env'
-import { CategoryModule, CustomConfigModule, FileModule, UserModule } from './modules'
+import { CategoryModule, CustomConfigModule, FavoriteModule, FileModule, UserModule } from './modules'
 import { MainSceneModule, WishSceneModule } from './scenes'
 import { FirestoreModule } from './services'
 import { BucketModule } from './services/bucket'
@@ -55,6 +55,7 @@ const session = new LocalSession()
     FileModule,
     CustomConfigModule,
     CategoryModule,
+    FavoriteModule,
   ],
   controllers: [],
   providers: [],
@@ -116,6 +117,18 @@ export class AppModule {
       },
       {
         path: 'v1/category/list/:id',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/favorite',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/favorite/:id',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/favorite/list',
         method: RequestMethod.ALL,
       },
     )
