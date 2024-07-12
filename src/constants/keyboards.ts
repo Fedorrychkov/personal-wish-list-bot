@@ -107,6 +107,48 @@ export const getOwnerWishItemKeyboard = ({
   return [defaultCommands]
 }
 
+export const getWishFavoriteKeyboard = ({
+  id,
+  wishlistNotifyEnabled,
+  webAppUrl,
+}: {
+  id: string
+  wishlistNotifyEnabled: boolean
+  webAppUrl?: string
+}) => {
+  const defaultCommands = []
+
+  if (webAppUrl) {
+    defaultCommands.push(getMainOpenWebAppButton(webAppUrl))
+  }
+
+  if (!wishlistNotifyEnabled) {
+    return [
+      defaultCommands,
+      [
+        {
+          text: 'Включить уведомления',
+          callback_data: `${WISH_CALLBACK_DATA.enableFavoriteNotification} ${id}`,
+        },
+      ],
+    ]
+  }
+
+  if (wishlistNotifyEnabled) {
+    return [
+      defaultCommands,
+      [
+        {
+          text: 'Отключить уведомления',
+          callback_data: `${WISH_CALLBACK_DATA.disableFavoriteNotification} ${id}`,
+        },
+      ],
+    ]
+  }
+
+  return [defaultCommands]
+}
+
 export const getSharedWishItemKeyboard = ({
   id,
   wish,

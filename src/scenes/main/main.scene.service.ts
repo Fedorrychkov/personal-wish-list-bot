@@ -6,7 +6,7 @@ import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'sr
 import { UserDocument, UserEntity, WishEntity } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { getImageBuffer } from 'src/helpers'
-import { CustomConfigService } from 'src/modules'
+import { CustomConfigService, WishService } from 'src/modules'
 import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services/bucket'
 import { ChatTelegrafContextType } from 'src/types'
 import { Context } from 'telegraf'
@@ -25,6 +25,7 @@ export class MainSceneService {
   constructor(
     private readonly userEntity: UserEntity,
     private readonly wishEntity: WishEntity,
+    private readonly wishService: WishService,
     private readonly sharedService: SharedService,
     private readonly customConfigService: CustomConfigService,
     @Inject(DefaultBucketProvider.bucketName)
@@ -219,7 +220,10 @@ export class MainSceneService {
       link: '',
     })
 
-    const response = await this.wishEntity.createOrUpdate(payload)
+    const response = await this.wishService.createAndNotifySubscribers(
+      { ...userContext, id: Number(userContext?.id) },
+      payload,
+    )
 
     if ((ctx?.update as any)?.callback_query) {
       await ctx.deleteMessage(ctx?.msgId).catch()

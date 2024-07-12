@@ -11,7 +11,7 @@ import {
 } from 'src/constants/keyboards'
 import { UserDocument, WishDocument, WishEntity } from 'src/entities'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
-import { CustomConfigService } from 'src/modules'
+import { CustomConfigService, WishService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { getUrlMetadata } from '../wish/utils/getUrlMetadata'
@@ -19,7 +19,11 @@ import { getUrlMetadata } from '../wish/utils/getUrlMetadata'
 @Injectable()
 export class SharedService {
   private logger = new Logger(SharedService.name)
-  constructor(private readonly wishEntity: WishEntity, private readonly customConfigService: CustomConfigService) {}
+  constructor(
+    private readonly wishEntity: WishEntity,
+    private readonly customConfigService: CustomConfigService,
+    private readonly wishService: WishService,
+  ) {}
 
   async enterWishScene(@Ctx() ctx: SceneContext) {
     await ctx?.scene?.leave?.()
@@ -128,7 +132,7 @@ export class SharedService {
     })
   }
 
-  async addWishItemByLink(@Ctx() ctx: SceneContext, options: { url: string }) {
+  async addWishItemByLink(@Ctx() ctx: SceneContext, options: { url: string }, userContext?: UserDocument) {
     try {
       const { url } = options || {}
       const openGraph = await getUrlMetadata(url)
@@ -142,7 +146,10 @@ export class SharedService {
         link: url || '',
       })
 
-      const response = await this.wishEntity.createOrUpdate(payload)
+      const response = await this.wishService.createAndNotifySubscribers(
+        { ...userContext, id: Number(userContext?.id) },
+        payload,
+      )
 
       await ctx.replyWithHTML(
         `${response.name}\nС изображением: ${response?.imageUrl}\n\nдобавлен в ваш список желаний!`,

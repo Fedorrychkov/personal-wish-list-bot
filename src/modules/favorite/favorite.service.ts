@@ -16,12 +16,24 @@ export class FavoriteService {
     return response
   }
 
+  public async getSubscribersList(id: string | number): Promise<FavoriteDocument[]> {
+    const response = await this.favoriteEntity.findAll({ favoriteUserId: id?.toString() })
+
+    return response
+  }
+
   public async getItem(user: TgInitUser, favoriteUserId: string): Promise<FavoriteDocument> {
     const [favorite] = await this.favoriteEntity.findAll({ userId: user?.id?.toString(), favoriteUserId })
 
     if (!favorite) {
       throw new NotFoundException('Favorite not found')
     }
+
+    return favorite
+  }
+
+  public async getDocument(id: string): Promise<FavoriteDocument> {
+    const favorite = await this.favoriteEntity.get(id)
 
     return favorite
   }

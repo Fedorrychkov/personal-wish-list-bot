@@ -4,7 +4,7 @@ import { getMainKeyboards, getOwnerWishItemKeyboard } from 'src/constants'
 import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
 import { UserDocument, WishEntity } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
-import { CustomConfigService } from 'src/modules'
+import { CustomConfigService, WishService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../shared'
@@ -17,6 +17,7 @@ export class WishItemManipulationService {
     private readonly wishEntity: WishEntity,
     private readonly sharedService: SharedService,
     private readonly customConfigService: CustomConfigService,
+    private readonly wishService: WishService,
   ) {}
 
   @AvailableChatTypes('private')
@@ -201,8 +202,10 @@ export class WishItemManipulationService {
     return
   }
 
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.copy_wish_item))
-  async copyWishItem(@Ctx() ctx: SceneContext) {
+  async copyWishItem(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
 
     if (!id) {
@@ -235,7 +238,7 @@ export class WishItemManipulationService {
       updatedAt: null,
     })
 
-    const response = await this.wishEntity.createOrUpdate(payload)
+    const response = await this.wishService.create({ ...userContext, id: Number(userContext?.id) }, payload)
 
     await this.sharedService.showWishItem(ctx, {
       wish: response,

@@ -73,6 +73,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "favorite",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "favoriteUserId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

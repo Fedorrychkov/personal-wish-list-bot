@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Action, Ctx, Hears, Scene } from 'nestjs-telegraf'
 import { backBtn, getMainKeyboards } from 'src/constants'
-import { AvailableChatTypes } from 'src/decorator'
-import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
+import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
+import { UserDocument } from 'src/entities'
+import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { CustomConfigService } from 'src/modules'
 import { SharedService } from 'src/scenes/shared'
@@ -37,8 +38,10 @@ export class WishByLinkSceneService {
   /**
    * При получении сообщения в сцене, не подходящего ни под один формат, начинаем процесс с начала
    */
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Hears(/.*/)
-  async onAddByUrl(@Ctx() ctx: SceneContext) {
+  async onAddByUrl(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
     const url = tryToGetUrlOrEmptyString(ctx?.text)
 
     if (!url) {
@@ -59,7 +62,7 @@ export class WishByLinkSceneService {
     }
 
     try {
-      await this.sharedService.addWishItemByLink(ctx, { url })
+      await this.sharedService.addWishItemByLink(ctx, { url }, userContext)
       await ctx.deleteMessage(ctx?.msgId).catch()
 
       // TODO: Придумать шаг пустой, без сообщений, куда идет продолжение работы с виш листами и без лишних сообщений!

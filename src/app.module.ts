@@ -8,6 +8,7 @@ import * as LocalSession from 'telegraf-session-local'
 import { isProduction } from './env'
 import { CategoryModule, CustomConfigModule, FavoriteModule, FileModule, UserModule } from './modules'
 import { MainSceneModule, WishSceneModule } from './scenes'
+import { FavoriteSceneModule } from './scenes/favorite/favorite.scene.module'
 import { FirestoreModule } from './services'
 import { BucketModule } from './services/bucket'
 
@@ -52,6 +53,7 @@ const session = new LocalSession()
     }),
     MainSceneModule,
     WishSceneModule,
+    FavoriteSceneModule,
     FileModule,
     CustomConfigModule,
     CategoryModule,

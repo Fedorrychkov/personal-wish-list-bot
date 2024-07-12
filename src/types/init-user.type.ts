@@ -1,9 +1,9 @@
 export type TgInitUser = {
-  allowsWriteToPm: boolean
-  firstName: string
   id: number
-  isPremium: boolean
-  languageCode: string
-  lastName: string
-  username: string
+  username?: string
+  isPremium?: boolean
+  firstName?: string
+  lastName?: string
+  allowsWriteToPm?: boolean
+  languageCode?: string
 }

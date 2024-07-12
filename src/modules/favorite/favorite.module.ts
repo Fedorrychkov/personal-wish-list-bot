@@ -8,6 +8,6 @@ import { FavoriteService } from './favorite.service'
   imports: [],
   controllers: [FavoriteController],
   providers: [FavoriteEntity, FavoriteService],
-  exports: [FavoriteEntity],
+  exports: [FavoriteEntity, FavoriteService],
 })
 export class FavoriteModule {}

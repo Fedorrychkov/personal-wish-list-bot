@@ -12,14 +12,16 @@ import {
   getDeleteMessageToSubscriber,
   getMainKeyboards,
   getOwnerWishItemKeyboard,
+  getWishFavoriteKeyboard,
 } from 'src/constants'
-import { UserEntity, WishDocument, WishEntity } from 'src/entities'
+import { FavoriteDocument, UserEntity, WishDocument, WishEntity } from 'src/entities'
 import { ERROR_CODES } from 'src/errors'
 import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services'
 import { TgInitUser } from 'src/types'
 import { Telegraf } from 'telegraf'
 
 import { CustomConfigService } from '../config'
+import { FavoriteService } from '../favorite'
 import { WishPatchDto } from './dto'
 
 @Injectable()
@@ -34,6 +36,7 @@ export class WishService {
     private readonly customConfigService: CustomConfigService,
     @Inject(DefaultBucketProvider.bucketName)
     private readonly bucketProvider: BucketProvider,
+    private readonly favoriteService: FavoriteService,
   ) {
     this.telegraf = new Telegraf(this.customConfigService.tgToken)
     this.bucketService = new BucketSharedService(this.bucketProvider.bucket, WishService.name)
@@ -63,12 +66,6 @@ export class WishService {
     this.validateNotFound(response)
 
     return response
-  }
-
-  public async create(user: TgInitUser, body: WishPatchDto): Promise<WishDocument> {
-    const payload = this.wishEntity.getValidProperties({ name: '', ...body, userId: user?.id?.toString() })
-
-    return this.wishEntity.createOrUpdate(payload)
   }
 
   public async update(user: TgInitUser, id: string, body: WishPatchDto): Promise<WishDocument> {
@@ -267,5 +264,49 @@ export class WishService {
     doc.update({ imageUrl: null })
 
     return { ...data, imageUrl: null }
+  }
+
+  public async create(user: TgInitUser, body: WishPatchDto): Promise<WishDocument> {
+    const payload = this.wishEntity.getValidProperties({ name: '', ...body, userId: user?.id?.toString() })
+
+    return this.wishEntity.createOrUpdate(payload)
+  }
+
+  public async createAndNotifySubscribers(user: TgInitUser, body: WishPatchDto): Promise<WishDocument> {
+    const [wish, subscribers] = await Promise.all([
+      this.create(user, body),
+      this.favoriteService.getSubscribersList(user?.id),
+    ])
+
+    this.notifyAllSubscribers(user, subscribers, wish)
+
+    return wish
+  }
+
+  private async notifyAllSubscribers(owner: TgInitUser, subscribers: FavoriteDocument[], wish: WishDocument) {
+    const subscribersWithNotifyEnabled = subscribers?.filter((subscriber) => subscriber?.wishlistNotifyEnabled)
+
+    if (!subscribersWithNotifyEnabled?.length) return
+
+    for await (const subscriber of subscribersWithNotifyEnabled) {
+      const subscribedUser = await this.userEntity.get(subscriber?.userId)
+
+      if (!subscribedUser) continue
+
+      await this.telegraf.telegram.sendMessage(
+        subscribedUser?.chatId,
+        `Пользователь @${owner?.username || owner?.id}, добавил новое желание, можете посмотреть его в Web App`,
+        {
+          reply_markup: {
+            inline_keyboard: getWishFavoriteKeyboard({
+              id: subscriber.id,
+              wishlistNotifyEnabled: subscriber?.wishlistNotifyEnabled,
+              webAppUrl: `${this.customConfigService.miniAppUrl}/wish/${wish?.id}`,
+            }),
+          },
+          parse_mode: 'HTML',
+        },
+      )
+    }
   }
 }
