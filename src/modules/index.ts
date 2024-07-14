@@ -1,5 +1,6 @@
 export * from './category'
 export * from './config'
+export * from './customization'
 export * from './favorite'
 export * from './file'
 export * from './user'

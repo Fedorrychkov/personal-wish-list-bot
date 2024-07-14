@@ -1,4 +1,4 @@
-import { CategoryDocument, UserDocument, WishDocument } from 'src/entities'
+import { CategoryDocument, CustomizationDocument, UserDocument, WishDocument } from 'src/entities'
 import { FavoriteDocument } from 'src/entities/favorite'
 import { FileDocument } from 'src/entities/file'
 
@@ -10,4 +10,5 @@ export const FirestoreCollectionProviders: string[] = [
   FileDocument.collectionName,
   CategoryDocument.collectionName,
   FavoriteDocument.collectionName,
+  CustomizationDocument.collectionName,
 ]

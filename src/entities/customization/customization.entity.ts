@@ -3,19 +3,19 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import firebase from 'firebase-admin'
 import { getUniqueId, time } from 'src/helpers'
 
-import { CategoryDocument } from './category.document'
-import { CategoryFilter } from './category.types'
+import { CustomizationDocument } from './customization.document'
+import { CustomizationFilter } from './customization.types'
 
 @Injectable()
-export class CategroyEntity {
-  private logger: Logger = new Logger(CategroyEntity.name)
+export class CustomizationEntity {
+  private logger: Logger = new Logger(CustomizationEntity.name)
 
   constructor(
-    @Inject(CategoryDocument.collectionName)
-    private collection: CollectionReference<CategoryDocument>,
+    @Inject(CustomizationDocument.collectionName)
+    private collection: CollectionReference<CustomizationDocument>,
   ) {}
 
-  async get(id: string): Promise<CategoryDocument | null> {
+  async get(id: string): Promise<CustomizationDocument | null> {
     const snapshot = await this.collection.doc(id).get()
 
     if (!snapshot.exists) {
@@ -25,7 +25,7 @@ export class CategroyEntity {
     }
   }
 
-  async createOrUpdate(payload: CategoryDocument) {
+  async createOrUpdate(payload: CustomizationDocument) {
     const document = await this.collection.doc(payload.id)
     await document.set(payload)
 
@@ -50,9 +50,9 @@ export class CategroyEntity {
     return true
   }
 
-  private findAllGenerator(filter: CategoryFilter) {
+  private findAllGenerator(filter: CustomizationFilter) {
     const collectionRef = this.collection
-    let query: firebase.firestore.Query<CategoryDocument> = collectionRef
+    let query: firebase.firestore.Query<CustomizationDocument> = collectionRef
 
     if (filter?.userId) {
       query = query.where('userId', '==', filter?.userId)
@@ -61,8 +61,8 @@ export class CategroyEntity {
     return query
   }
 
-  async findAll(filter: CategoryFilter): Promise<CategoryDocument[]> {
-    const list: CategoryDocument[] = []
+  async findAll(filter: CustomizationFilter): Promise<CustomizationDocument[]> {
+    const list: CustomizationDocument[] = []
     let query = this.findAllGenerator(filter)
 
     query = query.orderBy('createdAt', 'desc')
@@ -73,14 +73,15 @@ export class CategroyEntity {
     return list
   }
 
-  getValidProperties(document: { id?: string } & Omit<CategoryDocument, 'id'>) {
+  getValidProperties(document: { id?: string } & Omit<CustomizationDocument, 'id'>) {
     const dueDateMillis = time().valueOf()
     const createdAt = Timestamp.fromMillis(dueDateMillis)
 
     return {
       id: document.id || getUniqueId(),
       userId: document.userId,
-      name: document.name || null,
+      title: document?.title || null,
+      patternName: document?.patternName || null,
       createdAt: document.createdAt || createdAt,
       updatedAt: document.updatedAt || null,
     }
