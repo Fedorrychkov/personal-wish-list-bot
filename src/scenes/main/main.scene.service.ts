@@ -5,8 +5,9 @@ import { getMainKeyboards, getMainOpenWebAppButton, getWishItemKeyboard } from '
 import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
 import { UserDocument, UserEntity, WishEntity } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
-import { getImageBuffer } from 'src/helpers'
+import { getImageBuffer, safeAtob, safeParse } from 'src/helpers'
 import { CustomConfigService, WishService } from 'src/modules'
+import { CategoryService } from 'src/modules'
 import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services/bucket'
 import { ChatTelegrafContextType } from 'src/types'
 import { Context } from 'telegraf'
@@ -30,8 +31,76 @@ export class MainSceneService {
     private readonly customConfigService: CustomConfigService,
     @Inject(DefaultBucketProvider.bucketName)
     private readonly bucketProvider: BucketProvider,
+    private readonly categoryService: CategoryService,
   ) {
     this.bucketService = new BucketSharedService(this.bucketProvider.bucket, MainSceneService.name)
+  }
+
+  private async shareByHash(startPayload: string, userContext: UserDocument) {
+    const parsed = safeAtob(startPayload)
+
+    /**
+     * id: userId
+     * cId: categoryId
+     * wId: wishId
+     */
+    const object = safeParse<{ id?: string; cId?: string; wId?: string }>(parsed)
+
+    if (object?.id) {
+      const sharedUser = await this.userEntity?.get(object.id)
+
+      const isDifferentUsers = sharedUser?.id && sharedUser?.id !== userContext?.id
+
+      return {
+        sharedUser: sharedUser,
+        isDifferentUsers,
+      }
+    }
+
+    if (object?.cId) {
+      const category = await this.categoryService.getItem(object?.cId)
+      const sharedUser = await this.userEntity?.get(category.userId)
+
+      const isDifferentUsers = sharedUser?.id && sharedUser?.id !== userContext?.id
+
+      return {
+        sharedUser: sharedUser,
+        isDifferentUsers,
+        category,
+      }
+    }
+
+    if (object?.wId) {
+      const wish = await this.wishService.getItem(object?.wId)
+      const sharedUser = await this.userEntity?.get(wish.userId)
+
+      const isDifferentUsers = sharedUser?.id && sharedUser?.id !== userContext?.id
+
+      return {
+        sharedUser: sharedUser,
+        isDifferentUsers,
+        wish,
+      }
+    }
+  }
+
+  private async deprecatedSharePayload(startPayload: string, userContext: UserDocument) {
+    const isShareWishListById = startPayload.includes(START_PAYLOAD_KEYS.shareById)
+    const isSharedWishListByUsername = startPayload.includes(START_PAYLOAD_KEYS.shareByUserName)
+    const sharedUserName = isSharedWishListByUsername
+      ? startPayload?.replace(START_PAYLOAD_KEYS.shareByUserName, '')
+      : ''
+    const sharedUserId = isShareWishListById ? startPayload?.replace(START_PAYLOAD_KEYS.shareById, '') : ''
+
+    const [sharedUserByUserName] = sharedUserName ? await this.userEntity?.findAll({ username: sharedUserName }) : []
+
+    const sharedUserById = sharedUserId ? await this.userEntity?.get(sharedUserId) : null
+
+    const sharedUser = sharedUserByUserName || sharedUserById
+
+    const isDifferentUsers = sharedUser?.id && sharedUser?.id !== userContext?.id
+
+    return { isDifferentUsers, sharedUser }
   }
 
   @Start()
@@ -42,20 +111,12 @@ export class MainSceneService {
     @UserTelegrafContext() userContext: UserDocument,
     @ChatTelegrafContext() chatContext: ChatTelegrafContextType,
   ) {
-    const startPayload = (ctx as any)?.startPayload?.toLowerCase?.() || ''
-    const isShareWishListById = startPayload.includes(START_PAYLOAD_KEYS.shareById)
-    const isSharedWishListByUsername = startPayload.includes(START_PAYLOAD_KEYS.shareByUserName)
-    const sharedUserName = isSharedWishListByUsername
-      ? startPayload?.replace(START_PAYLOAD_KEYS.shareByUserName, '')
-      : ''
-    const sharedUserId = isShareWishListById ? startPayload?.replace(START_PAYLOAD_KEYS.shareById, '') : ''
+    const startPayload = (ctx as any)?.startPayload || ''
 
-    const [sharedUserByUserName] = sharedUserName ? await this.userEntity?.findAll({ username: sharedUserName }) : []
-    const sharedUserById = sharedUserId ? await this.userEntity?.get(sharedUserId) : null
-
-    const sharedUser = sharedUserByUserName || sharedUserById
-
-    const isDifferentUsers = sharedUser?.id && sharedUser?.id !== userContext?.id
+    let { isDifferentUsers, sharedUser } = await this.deprecatedSharePayload(startPayload?.toLowerCase(), userContext)
+    const response = await this.shareByHash(startPayload, userContext)
+    isDifferentUsers = sharedUser ? isDifferentUsers : response.isDifferentUsers
+    sharedUser = sharedUser ? sharedUser : response.sharedUser
 
     const user = await this.userEntity.get(userContext?.id)
 
@@ -107,6 +168,29 @@ export class MainSceneService {
       handleTryToCheckUserAvatar()
     }
 
+    const sendSharedInfo = async () => {
+      const categoryText = response?.category ? ` по категории ${response?.category?.name}` : ''
+      const wishText = response?.wish ? `, желание: ${response?.wish?.name?.slice(0, 100)}...` : ''
+      const customButtonName = `Открыть${categoryText ? ' список по категории' : ''} ${wishText ? ' желание' : ''}`
+
+      const query = `${categoryText ? `categoryId=${response?.category.id}` : ''}`
+
+      const defaultUrl = `${this.customConfigService.miniAppUrl}/user/${sharedUser?.id}${query ? `?${query}` : ''}`
+      const wishUrl = `${this.customConfigService.miniAppUrl}/wish/${response?.wish?.id}${query ? `?${query}` : ''}`
+
+      const finalUrl = response?.wish ? wishUrl : defaultUrl
+
+      await ctx.reply(`Список желаний пользователя: @${sharedUser?.username || sharedUser?.id}${categoryText}`, {
+        reply_markup: {
+          inline_keyboard: [
+            [getMainOpenWebAppButton(finalUrl, customButtonName)],
+            [{ callback_data: MAIN_CALLBACK_DATA.menu, text: 'Меню' }],
+          ],
+        },
+        parse_mode: 'HTML',
+      })
+    }
+
     if (!user && chatContext.chat.id && chatContext?.type === 'private') {
       const avatarUrl = await handleGetUserPhoto()
       const payload = this.userEntity.getValidProperties({
@@ -125,18 +209,7 @@ export class MainSceneService {
       )
 
       if (sharedUser && isDifferentUsers) {
-        await ctx.reply(
-          `Список желаний пользователя: @${sharedUser?.username || sharedUser?.id} можно посмотреть в WebApp`,
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [getMainOpenWebAppButton(`${this.customConfigService.miniAppUrl}/user/${sharedUser?.id}`)],
-                [{ callback_data: MAIN_CALLBACK_DATA.menu, text: 'Меню' }],
-              ],
-            },
-            parse_mode: 'HTML',
-          },
-        )
+        await sendSharedInfo()
 
         return
       }
@@ -153,7 +226,7 @@ export class MainSceneService {
       this.userEntity.createOrUpdate(payload)
     }
 
-    if (!sharedUser) {
+    if (!sharedUser || !isDifferentUsers) {
       await ctx.reply('С возвращением! Чтобы посмотреть возможности бота, можете ввести или выбрать команду /help', {
         reply_markup: {
           inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
@@ -162,18 +235,7 @@ export class MainSceneService {
     }
 
     if (sharedUser && isDifferentUsers) {
-      await ctx.reply(
-        `Список желаний пользователя: @${sharedUser?.username || sharedUser?.id} можно посмотреть в WebApp`,
-        {
-          reply_markup: {
-            inline_keyboard: [
-              [getMainOpenWebAppButton(`${this.customConfigService.miniAppUrl}/user/${sharedUser?.id}`)],
-              [{ callback_data: MAIN_CALLBACK_DATA.menu, text: 'Меню' }],
-            ],
-          },
-          parse_mode: 'HTML',
-        },
-      )
+      await sendSharedInfo()
 
       return
     }
