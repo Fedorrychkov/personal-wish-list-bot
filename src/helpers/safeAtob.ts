@@ -1,11 +1,13 @@
-export const safeAtob = (path: string, tries = 1) => {
+export const safeAtob = (path: string, tries = 2) => {
   if (!tries) return undefined
+
+  tries -= 1
 
   try {
     return atob(path)
   } catch {
-    if (tries && path?.[path?.length - 1] !== '=') {
-      return safeAtob(`${path}=`, 0)
+    if (tries) {
+      return safeAtob(`${path}=`, tries)
     }
 
     return undefined
