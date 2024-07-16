@@ -81,6 +81,7 @@ export class CategroyEntity {
       id: document.id || getUniqueId(),
       userId: document.userId,
       name: document.name || null,
+      isPrivate: document.isPrivate || false,
       createdAt: document.createdAt || createdAt,
       updatedAt: document.updatedAt || null,
     }

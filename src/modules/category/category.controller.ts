@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common'
 import { UserContext } from 'src/decorator'
 import { CategoryDocument } from 'src/entities'
 import { TgDataGuard } from 'src/guards'
@@ -33,5 +33,24 @@ export class CategoryController {
   @Get('/:id')
   async item(@Param() params: { id: string }): Promise<CategoryDocument> {
     return this.categoryService.getItem(params?.id)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Delete('/:id')
+  async delete(
+    @UserContext() user: TgInitUser,
+    @Param() params: { id: string },
+  ): Promise<{ success: boolean; id: string }> {
+    return this.categoryService.delete(user, params?.id)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Patch('/:id')
+  async update(
+    @UserContext() user: TgInitUser,
+    @Body() body: CategoryDto,
+    @Param() params: { id: string },
+  ): Promise<CategoryDocument> {
+    return this.categoryService.update(user, body, params.id)
   }
 }

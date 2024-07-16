@@ -12,6 +12,7 @@ export class CategoryDocument {
    * Max length - 200
    */
   name: string
+  isPrivate?: boolean | null
   createdAt?: Timestamp | null
   updatedAt?: Timestamp | null
 }

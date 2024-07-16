@@ -9,6 +9,7 @@ import {
   ParseFilePipe,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -20,7 +21,7 @@ import { TgDataGuard } from 'src/guards'
 import { getFileTypesRegexp, IMG_MAX_5MB_SIZE_IN_BYTE, listDefaultImageExt } from 'src/services'
 import { TgInitUser } from 'src/types'
 
-import { WishPatchDto } from './dto'
+import { WishFilterDto, WishPatchDto } from './dto'
 import { WishService } from './wish.service'
 
 @Controller('v1/wish')
@@ -29,8 +30,8 @@ export class WishController {
 
   @UseGuards(TgDataGuard)
   @Get('/list')
-  async list(@UserContext() user: TgInitUser): Promise<WishDocument[]> {
-    return this.wishService.getList(user?.id)
+  async list(@UserContext() user: TgInitUser, @Query() filter: WishFilterDto): Promise<WishDocument[]> {
+    return this.wishService.getList(user?.id, filter)
   }
 
   @UseGuards(TgDataGuard)
@@ -41,8 +42,8 @@ export class WishController {
 
   @UseGuards(TgDataGuard)
   @Get('/list/:id')
-  async listByUserId(@Param() params: { id: string }): Promise<WishDocument[]> {
-    return this.wishService.getList(params?.id)
+  async listByUserId(@Param() params: { id: string }, @Query() filter: WishFilterDto): Promise<WishDocument[]> {
+    return this.wishService.getList(params?.id, filter)
   }
 
   @UseGuards(TgDataGuard)

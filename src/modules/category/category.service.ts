@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { CategoryDocument, CategroyEntity } from 'src/entities'
 import { TgInitUser } from 'src/types'
 
@@ -23,8 +23,55 @@ export class CategoryService {
   }
 
   public async create(user: TgInitUser, body: CategoryDto): Promise<CategoryDocument> {
-    const payload = this.categroyEntity.getValidProperties({ name: '', ...body, userId: user?.id?.toString() })
+    const privateEnabled = typeof body.isPrivate === 'string' ? body.isPrivate === 'true' : body.isPrivate
+
+    const payload = this.categroyEntity.getValidProperties({
+      name: '',
+      ...body,
+      isPrivate: privateEnabled,
+      userId: user?.id?.toString(),
+    })
 
     return this.categroyEntity.createOrUpdate(payload)
+  }
+
+  public async update(user: TgInitUser, body: CategoryDto, id: string): Promise<CategoryDocument> {
+    const privateEnabled = typeof body.isPrivate === 'string' ? body.isPrivate === 'true' : body.isPrivate
+    const { data, doc } = await this.categroyEntity.getUpdate(id)
+
+    if (user?.id?.toString() !== data?.userId) {
+      throw new ForbiddenException('You cannot update different user category')
+    }
+
+    if (!data) {
+      throw new NotFoundException('Category does not exist')
+    }
+
+    const payload = this.categroyEntity.getValidProperties({
+      ...data,
+      ...body,
+      isPrivate: privateEnabled,
+      userId: user?.id?.toString(),
+    })
+
+    await doc.update({ ...payload })
+
+    return payload
+  }
+
+  public async delete(user: TgInitUser, id: string): Promise<{ success: boolean; id: string }> {
+    const response = await this.categroyEntity.get(id)
+
+    if (response && user?.id?.toString() !== response?.userId) {
+      throw new ForbiddenException('You cannot delete different user category')
+    }
+
+    if (!response) {
+      throw new NotFoundException('Category does not exist')
+    }
+
+    await this.categroyEntity.delete(id)
+
+    return { success: true, id }
   }
 }

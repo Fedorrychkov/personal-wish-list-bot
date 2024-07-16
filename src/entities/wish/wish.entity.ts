@@ -67,6 +67,10 @@ export class WishEntity {
       query = query.where('userId', '==', filter?.userId)
     }
 
+    if (filter?.categoryId) {
+      query = query.where('categoryId', '==', filter?.categoryId)
+    }
+
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))
 

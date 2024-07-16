@@ -22,7 +22,7 @@ import { Telegraf } from 'telegraf'
 
 import { CustomConfigService } from '../config'
 import { FavoriteService } from '../favorite'
-import { WishPatchDto } from './dto'
+import { WishFilterDto, WishPatchDto } from './dto'
 
 @Injectable()
 export class WishService {
@@ -54,8 +54,8 @@ export class WishService {
     }
   }
 
-  public async getList(id: string | number): Promise<WishDocument[]> {
-    const response = await this.wishEntity.findAll({ userId: id?.toString() })
+  public async getList(id: string | number, filter: WishFilterDto): Promise<WishDocument[]> {
+    const response = await this.wishEntity.findAll({ ...filter, userId: id?.toString() })
 
     return response
   }

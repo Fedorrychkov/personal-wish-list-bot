@@ -6,3 +6,7 @@ export type WishPatchDto = {
   link?: WishDocument['link']
   imageUrl?: WishDocument['imageUrl']
 }
+
+export type WishFilterDto = {
+  categoryId?: string
+}
