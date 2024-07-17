@@ -8,6 +8,7 @@ import * as LocalSession from 'telegraf-session-local'
 import { isProduction } from './env'
 import {
   CategoryModule,
+  CategoryWhitelistModule,
   CustomConfigModule,
   CustomizationModule,
   FavoriteModule,
@@ -66,6 +67,7 @@ const session = new LocalSession()
     CategoryModule,
     FavoriteModule,
     CustomizationModule,
+    CategoryWhitelistModule,
   ],
   controllers: [],
   providers: [],
@@ -147,6 +149,18 @@ export class AppModule {
       },
       {
         path: 'v1/customization/:userId',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/category-whitelist/list',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/category-whitelist',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/category-whitelist/:id',
         method: RequestMethod.ALL,
       },
     )

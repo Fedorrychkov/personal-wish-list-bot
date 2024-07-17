@@ -32,6 +32,12 @@ export class FavoriteService {
     return favorite
   }
 
+  public async getSubscriber(userId: string, favoriteUserId: string): Promise<FavoriteDocument> {
+    const [favorite] = await this.favoriteEntity.findAll({ userId, favoriteUserId })
+
+    return favorite
+  }
+
   public async getDocument(id: string): Promise<FavoriteDocument> {
     const favorite = await this.favoriteEntity.get(id)
 

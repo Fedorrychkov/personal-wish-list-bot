@@ -115,8 +115,8 @@ export class MainSceneService {
 
     let { isDifferentUsers, sharedUser } = await this.deprecatedSharePayload(startPayload?.toLowerCase(), userContext)
     const response = await this.shareByHash(startPayload, userContext)
-    isDifferentUsers = sharedUser ? isDifferentUsers : response.isDifferentUsers
-    sharedUser = sharedUser ? sharedUser : response.sharedUser
+    isDifferentUsers = sharedUser ? isDifferentUsers : !!response?.isDifferentUsers
+    sharedUser = sharedUser ? sharedUser : response?.sharedUser
 
     const user = await this.userEntity.get(userContext?.id)
 

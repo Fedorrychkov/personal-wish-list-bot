@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { CategoryDocument, CategroyEntity, WishEntity } from 'src/entities'
+import { CategoryDocument, CategoryWhitelistEntity, CategroyEntity, WishEntity } from 'src/entities'
 import { TgInitUser } from 'src/types'
 
 import { CategoryDto } from './dto'
@@ -8,12 +8,50 @@ import { CategoryDto } from './dto'
 export class CategoryService {
   private readonly logger = new Logger(CategoryService.name)
 
-  constructor(private readonly categroyEntity: CategroyEntity, private readonly wishEntity: WishEntity) {}
+  constructor(
+    private readonly categroyEntity: CategroyEntity,
+    private readonly wishEntity: WishEntity,
+    private readonly categoryWhitelistEntity: CategoryWhitelistEntity,
+  ) {}
 
-  public async getList(id: string | number): Promise<CategoryDocument[]> {
+  private async filterByCategoryWhitelist(response: CategoryDocument[], user: TgInitUser) {
+    const filtered = await Promise.all(
+      response.map(async (category) => {
+        if (!category.isPrivate) {
+          return category
+        }
+
+        const userWhitelist = await this.categoryWhitelistEntity.findAll({
+          categoryId: category.id,
+          whitelistedUserId: user?.id?.toString(),
+          userId: category.userId,
+        })
+
+        if (!!userWhitelist?.length) {
+          return category
+        }
+
+        return undefined
+      }),
+    )
+
+    const unempty = filtered?.filter(Boolean)
+
+    return unempty
+  }
+
+  public async getList(id: string | number, user?: TgInitUser): Promise<CategoryDocument[]> {
     const response = await this.categroyEntity.findAll({ userId: id?.toString() })
 
-    return response
+    if (!user || user.id?.toString() === id?.toString()) {
+      return response
+    }
+
+    if (!response.length) {
+      return []
+    }
+
+    return this.filterByCategoryWhitelist(response, user)
   }
 
   public async getItem(id: string): Promise<CategoryDocument> {
@@ -85,6 +123,19 @@ export class CategoryService {
         }
 
         return undefined
+      }),
+    )
+
+    const categoryWhitelist = await this.categoryWhitelistEntity.findAll({
+      categoryId: response?.id,
+      userId: user?.id?.toString(),
+    })
+
+    await Promise.all(
+      categoryWhitelist?.map(async (whitelist) => {
+        const response = await this.categoryWhitelistEntity.delete(whitelist.id)
+
+        return response
       }),
     )
 

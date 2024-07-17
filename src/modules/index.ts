@@ -1,4 +1,5 @@
 export * from './category'
+export * from './category-whitelist'
 export * from './config'
 export * from './customization'
 export * from './favorite'

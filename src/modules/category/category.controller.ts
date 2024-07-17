@@ -25,8 +25,8 @@ export class CategoryController {
 
   @UseGuards(TgDataGuard)
   @Get('/list/:id')
-  async listByUserId(@Param() params: { id: string }): Promise<CategoryDocument[]> {
-    return this.categoryService.getList(params?.id)
+  async listByUserId(@UserContext() user: TgInitUser, @Param() params: { id: string }): Promise<CategoryDocument[]> {
+    return this.categoryService.getList(params?.id, user)
   }
 
   @UseGuards(TgDataGuard)
