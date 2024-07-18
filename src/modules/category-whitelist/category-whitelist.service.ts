@@ -36,6 +36,12 @@ export class CategoryWhitelistService {
     return response
   }
 
+  public async findWhitelists(filter?: CategoryWhitelistFilter): Promise<CategoryWhitelistDocument[]> {
+    const response = await this.categoryWhitelistEntity.findAll({ ...filter })
+
+    return response
+  }
+
   public async create(user: TgInitUser, body: CategoryWhitelistDto): Promise<CategoryWhitelistDocument> {
     const payload = this.categoryWhitelistEntity.getValidProperties({
       ...body,

@@ -31,25 +31,29 @@ export class WishController {
   @UseGuards(TgDataGuard)
   @Get('/list')
   async list(@UserContext() user: TgInitUser, @Query() filter: WishFilterDto): Promise<WishDocument[]> {
-    return this.wishService.getList(user?.id, filter)
+    return this.wishService.getList(user?.id, filter, user)
   }
 
   @UseGuards(TgDataGuard)
   @Post('/')
   async create(@UserContext() user: TgInitUser, @Body() body: WishPatchDto): Promise<WishDocument> {
-    return this.wishService.create(user, body)
+    return this.wishService.createAndNotifySubscribers(user, body)
   }
 
   @UseGuards(TgDataGuard)
   @Get('/list/:id')
-  async listByUserId(@Param() params: { id: string }, @Query() filter: WishFilterDto): Promise<WishDocument[]> {
-    return this.wishService.getList(params?.id, filter)
+  async listByUserId(
+    @Param() params: { id: string },
+    @Query() filter: WishFilterDto,
+    @UserContext() requestorUser: TgInitUser,
+  ): Promise<WishDocument[]> {
+    return this.wishService.getList(params?.id, filter, requestorUser)
   }
 
   @UseGuards(TgDataGuard)
   @Get('/:id')
-  async item(@Param() params: { id: string }): Promise<WishDocument> {
-    return this.wishService.getItem(params?.id)
+  async item(@Param() params: { id: string }, @UserContext() user: TgInitUser): Promise<WishDocument> {
+    return this.wishService.getItem(params?.id, user)
   }
 
   @UseGuards(TgDataGuard)

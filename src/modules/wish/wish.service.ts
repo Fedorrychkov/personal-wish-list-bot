@@ -20,6 +20,8 @@ import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/
 import { TgInitUser } from 'src/types'
 import { Telegraf } from 'telegraf'
 
+import { CategoryService } from '../category'
+import { CategoryWhitelistService } from '../category-whitelist'
 import { CustomConfigService } from '../config'
 import { FavoriteService } from '../favorite'
 import { WishFilterDto, WishPatchDto } from './dto'
@@ -37,6 +39,8 @@ export class WishService {
     @Inject(DefaultBucketProvider.bucketName)
     private readonly bucketProvider: BucketProvider,
     private readonly favoriteService: FavoriteService,
+    private readonly categoryService: CategoryService,
+    private readonly categoryWhitelistService: CategoryWhitelistService,
   ) {
     this.telegraf = new Telegraf(this.customConfigService.tgToken)
     this.bucketService = new BucketSharedService(this.bucketProvider.bucket, WishService.name)
@@ -54,18 +58,78 @@ export class WishService {
     }
   }
 
-  public async getList(id: string | number, filter: WishFilterDto): Promise<WishDocument[]> {
+  public async getList(
+    id: string | number,
+    filter: WishFilterDto,
+    requestorUser?: TgInitUser,
+  ): Promise<WishDocument[]> {
     const response = await this.wishEntity.findAll({ ...filter, userId: id?.toString() })
+
+    if (requestorUser && requestorUser?.id?.toString() !== id && !!response.length) {
+      const accessedWishlsit = await Promise.all(
+        response?.map(async (wish) => {
+          if (requestorUser && wish?.categoryId && requestorUser?.id?.toString() !== wish?.userId) {
+            const filteredWish = await this.filterWishItem(wish, requestorUser)
+
+            return filteredWish
+          }
+
+          return wish
+        }),
+      )
+
+      const unemptyWishlist = accessedWishlsit?.filter(Boolean)
+
+      if (response?.length && !unemptyWishlist.length) {
+        const code = ERROR_CODES.wish.codes.WISH_PERMISSION_DENIED
+        const message = ERROR_CODES.wish.messages[code]
+
+        throw new ForbiddenException({ code, message })
+      }
+
+      return unemptyWishlist
+    }
 
     return response
   }
 
-  public async getItem(id: string): Promise<WishDocument> {
+  public async getItem(id: string, user?: TgInitUser): Promise<WishDocument> {
     const response = await this.wishEntity.get(id)
 
     this.validateNotFound(response)
 
+    if (user && response?.categoryId && user?.id?.toString() !== response?.userId) {
+      const filteredWish = await this.filterWishItem(response, user)
+
+      if (!filteredWish) {
+        const code = ERROR_CODES.wish.codes.WISH_PERMISSION_DENIED
+        const message = ERROR_CODES.wish.messages[code]
+
+        throw new ForbiddenException({ code, message })
+      }
+    }
+
     return response
+  }
+
+  private async filterWishItem(wish: WishDocument, requestorUser: TgInitUser) {
+    const category = await this.categoryService.getItem(wish.categoryId)
+
+    if (!category.isPrivate) {
+      return wish
+    }
+
+    const whitelist = await this.categoryWhitelistService.findWhitelists({
+      categoryId: category.id,
+      whitelistedUserId: requestorUser?.id?.toString(),
+      userId: category.userId,
+    })
+
+    if (!whitelist.length) {
+      return undefined
+    }
+
+    return wish
   }
 
   public async update(user: TgInitUser, id: string, body: WishPatchDto): Promise<WishDocument> {
