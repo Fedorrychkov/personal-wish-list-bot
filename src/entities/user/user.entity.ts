@@ -32,9 +32,13 @@ export class UserEntity {
     return user
   }
 
-  private findAllGenerator() {
+  private findAllGenerator(filter: UserFilter) {
     const collectionRef = this.collection
-    const query: firebase.firestore.Query<UserDocument> = collectionRef
+    let query: firebase.firestore.Query<UserDocument> = collectionRef
+
+    if (filter?.username) {
+      query = query.where('username', '==', filter.username)
+    }
 
     return query
   }
@@ -52,13 +56,9 @@ export class UserEntity {
 
   async findAll(filter: UserFilter): Promise<UserDocument[]> {
     const list: UserDocument[] = []
-    let query = this.findAllGenerator()
+    let query = this.findAllGenerator(filter)
 
     query = query.orderBy('createdAt', 'desc')
-
-    if (filter?.username) {
-      query = query.where('username', '==', filter.username)
-    }
 
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))

@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { UserDocument, UserEntity } from 'src/entities'
+import { ERROR_CODES } from 'src/errors'
 import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services'
 import { TgInitUser } from 'src/types'
 
@@ -24,6 +25,31 @@ export class UserService {
     }
 
     const response = await this.userEntity.get(id?.toString())
+
+    return response
+  }
+
+  public async findUserByUsername(user: TgInitUser, username: string): Promise<UserDocument> {
+    const { id } = user || {}
+
+    const code = ERROR_CODES.user.codes.USER_NOT_FOUND
+    const message = ERROR_CODES.wish.messages[code]
+
+    if (!user || !id) {
+      throw new NotFoundException({
+        code,
+        message,
+      })
+    }
+
+    const [response] = await this.userEntity.findAll({ username })
+
+    if (!response) {
+      throw new NotFoundException({
+        code,
+        message,
+      })
+    }
 
     return response
   }

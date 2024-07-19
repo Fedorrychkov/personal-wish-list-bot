@@ -59,4 +59,10 @@ export class UserController {
   async removeAvatar(@UserContext() user: TgInitUser): Promise<UserDocument> {
     return this.userService.removeAvatar(user)
   }
+
+  @UseGuards(TgDataGuard)
+  @Get('/find/username/:username')
+  async find(@UserContext() user: TgInitUser, @Param() params: { username: string }): Promise<UserDocument> {
+    return this.userService.findUserByUsername(user, params.username)
+  }
 }

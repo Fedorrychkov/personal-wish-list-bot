@@ -84,6 +84,10 @@ export class AppModule {
         method: RequestMethod.ALL,
       },
       {
+        path: 'v1/user/find/username/:username',
+        method: RequestMethod.ALL,
+      },
+      {
         path: 'v1/user/avatar',
         method: RequestMethod.ALL,
       },
