@@ -45,6 +45,9 @@ export class ChatTelegrafGuard extends SafeGuardInterceptor {
           `
 Извините, но бот пока умеет работать только в режиме личной переписки
 ${botWelcomeCommandsText}\nДля корректной работы перейдите в личку бота`,
+          {
+            parse_mode: 'HTML',
+          },
         )
         .then((response) => {
           setTimeout(() => {

@@ -1,7 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import * as fs from 'fs'
 import { Action, Command, Ctx, Help, On, Start, Update } from 'nestjs-telegraf'
-import { getMainKeyboards, getMainOpenWebAppButton, getWishItemKeyboard } from 'src/constants/keyboards'
+import {
+  getMainKeyboards,
+  getMainOpenWebAppButton,
+  getStartupMainSceneKeyboard,
+  getWishItemKeyboard,
+} from 'src/constants/keyboards'
 import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
 import { UserDocument, UserEntity, WishEntity } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
@@ -208,6 +213,12 @@ export class MainSceneService {
         }`,
       )
 
+      await ctx.reply('Давайте добавим новое желание?', {
+        reply_markup: {
+          inline_keyboard: getStartupMainSceneKeyboard(this.customConfigService.miniAppUrl),
+        },
+      })
+
       if (sharedUser && isDifferentUsers) {
         await sendSharedInfo()
 
@@ -258,7 +269,7 @@ export class MainSceneService {
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Help()
   async helpCommand(ctx: Context) {
-    await ctx.reply(botWelcomeCommandsText)
+    await ctx.reply(botWelcomeCommandsText, { parse_mode: 'HTML' })
   }
 
   @AvailableChatTypes('private')

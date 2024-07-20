@@ -4,7 +4,7 @@ import { WISH_CALLBACK_DATA } from 'src/scenes/wish/constants'
 import { KeyboardType } from './types'
 
 export const getMainOpenWebAppButton = (url: string, customText?: string) => ({
-  text: customText || 'Web App',
+  text: customText || 'Mini-App (Веб версия)',
   web_app: { url },
 })
 
@@ -41,6 +41,18 @@ export const getWishSceneKeyboards = () => [
       callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
     },
   ],
+]
+
+export const getStartupMainSceneKeyboard = (webAppUrl: string) => [
+  [{ text: 'Добавить по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
+  [{ text: 'Добавить и заполнить позже', callback_data: WISH_CALLBACK_DATA.addNewEmptyWish }],
+  [
+    {
+      text: 'Найти желания по нику (@username)',
+      callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
+    },
+  ],
+  [getMainOpenWebAppButton(webAppUrl)],
 ]
 
 export const getWishItemKeyboard = (id: string, webAppUrl: string) => [
