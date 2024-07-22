@@ -4,6 +4,8 @@ import { ERROR_CODES } from 'src/errors'
 import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services'
 import { TgInitUser } from 'src/types'
 
+import { UserDto } from './dto'
+
 @Injectable()
 export class UserService {
   private bucketService: BucketSharedService
@@ -70,6 +72,23 @@ export class UserService {
     }
 
     const payload = this.userEntity.getValidProperties({ ...data, avatarUrl: relativePath })
+    await doc.update(payload)
+
+    return payload
+  }
+
+  public async updateOnboarding(user: TgInitUser, dto: UserDto): Promise<UserDocument> {
+    const { doc, data } = await this.userEntity.getUpdate(user?.id?.toString())
+
+    if (!data) {
+      throw new NotFoundException('User not found')
+    }
+
+    if (!dto.appOnboardingKey) {
+      return data
+    }
+
+    const payload = this.userEntity.getValidProperties({ ...data, appOnboardingKey: dto.appOnboardingKey })
     await doc.update(payload)
 
     return payload

@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   FileTypeValidator,
@@ -6,6 +7,7 @@ import {
   MaxFileSizeValidator,
   Param,
   ParseFilePipe,
+  Patch,
   Post,
   UploadedFile,
   UseGuards,
@@ -18,6 +20,7 @@ import { TgDataGuard } from 'src/guards'
 import { getFileTypesRegexp, IMG_MAX_5MB_SIZE_IN_BYTE, listDefaultImageExt } from 'src/services'
 import { TgInitUser } from 'src/types'
 
+import { UserDto } from './dto'
 import { UserService } from './user.service'
 
 @Controller('v1/user')
@@ -28,6 +31,12 @@ export class UserController {
   @Get('/')
   async getCurrentUser(@UserContext() user: TgInitUser): Promise<UserDocument> {
     return this.userService.getUser(user)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Patch('/onboarding')
+  async updateOnboarding(@UserContext() user: TgInitUser, @Body() dto: UserDto): Promise<UserDocument> {
+    return this.userService.updateOnboarding(user, dto)
   }
 
   @UseGuards(TgDataGuard)

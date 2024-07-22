@@ -80,6 +80,10 @@ export class AppModule {
         method: RequestMethod.ALL,
       },
       {
+        path: 'v1/user/onboarding',
+        method: RequestMethod.ALL,
+      },
+      {
         path: 'v1/user/:id',
         method: RequestMethod.ALL,
       },

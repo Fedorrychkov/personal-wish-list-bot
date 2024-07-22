@@ -15,6 +15,7 @@ export class UserDocument {
   avatarUrl?: string | null
   isBot?: boolean | null
   phone?: string | null
+  appOnboardingKey?: string
   createdAt?: Timestamp | null
   updatedAt?: Timestamp | null
 }

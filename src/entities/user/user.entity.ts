@@ -79,6 +79,7 @@ export class UserEntity {
       isPremium: user.isPremium || false,
       avatarUrl: user.avatarUrl || null,
       isBot: user.isBot || false,
+      appOnboardingKey: user.appOnboardingKey || null,
       phone: user.phone || null,
       createdAt: user.createdAt || createdAt,
       updatedAt: user.updatedAt || null,
