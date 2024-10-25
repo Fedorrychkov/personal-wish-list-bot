@@ -132,15 +132,22 @@ export class SharedService {
     })
   }
 
-  async addWishItemByLink(@Ctx() ctx: SceneContext, options: { url: string }, userContext?: UserDocument) {
+  async addWishItemByLink(
+    @Ctx() ctx: SceneContext,
+    options: { url: string; title?: string },
+    userContext?: UserDocument,
+  ) {
     try {
-      const { url } = options || {}
+      const { url, title } = options || {}
+      const message = await ctx.reply('Пробуем загрузить информацию о желании по ссылке, пожалуйста, подождите!')
       const openGraph = await getUrlMetadata(url)
       this.logger.log('[onAddByUrl.OpenGraph.payload]', { openGraph, url })
 
+      await ctx.deleteMessage(message.message_id)
+
       const payload = this.wishEntity.getValidProperties({
         userId: `${ctx?.from?.id}`,
-        name: openGraph?.title || '',
+        name: title || openGraph?.title || '',
         description: openGraph?.description || '',
         imageUrl: tryToGetUrlOrEmptyString(openGraph?.imageUrl) || '',
         link: url || '',
@@ -151,8 +158,16 @@ export class SharedService {
         payload,
       )
 
+      this.logger.log('[onAddByUrl.response]', { response })
+
+      const statusMessage = openGraph.title
+        ? 'Информация успешно загружена и добавлена в список желаний!'
+        : 'Не удалось выгрузить информацию по ссылке, но желание добавлено с пустыми полями, кроме самой ссылки :('
+
       await ctx.replyWithHTML(
-        `${response.name}\nС изображением: ${response?.imageUrl}\n\nдобавлен в ваш список желаний!`,
+        `${statusMessage}\n\n${response.name || 'Без названия'}\nС изображением: ${
+          response?.imageUrl || 'Без изображения'
+        }`,
         {
           reply_markup: {
             inline_keyboard: getWishItemKeyboard(response.id, this.customConfigService.miniAppUrl),

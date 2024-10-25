@@ -6,7 +6,7 @@ import { AvailableChatTypes } from 'src/decorator'
 import { WishDocument, WishEntity } from 'src/entities'
 import { ChatTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { time } from 'src/helpers'
-import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
+import { extractUrlAndText } from 'src/helpers/url'
 import { CustomConfigService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -80,7 +80,7 @@ export class WishLinkEditSceneService {
     }
 
     const linkText = (ctx?.text || '')?.trim?.() || ''
-    const link = tryToGetUrlOrEmptyString(linkText)
+    const { url: link } = extractUrlAndText(linkText)
 
     if (!link) {
       await handleUpdateLastMessage('Произошла ошибка получения ссылки, попробуйте ввести еще раз')

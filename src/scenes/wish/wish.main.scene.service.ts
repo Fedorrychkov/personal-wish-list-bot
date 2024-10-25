@@ -3,7 +3,7 @@ import { Action, Command, Ctx, Hears, Update } from 'nestjs-telegraf'
 import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
 import { UserDocument, UserEntity, WishEntity } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
-import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
+import { extractUrlAndText } from 'src/helpers/url'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../shared'
@@ -70,7 +70,7 @@ export class WishMainSceneService {
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Hears(/.*/)
   async onAnyAnswer(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const url = tryToGetUrlOrEmptyString(ctx?.text)
+    const { url, text: extractedText } = extractUrlAndText(ctx?.text)
 
     ctx?.deleteMessage(ctx?.msgId)?.catch()
 
@@ -91,7 +91,7 @@ export class WishMainSceneService {
     }
 
     try {
-      await this.sharedService.addWishItemByLink(ctx, { url }, userContext)
+      await this.sharedService.addWishItemByLink(ctx, { url, title: extractedText }, userContext)
     } catch (error) {
       this.logger.error('[onAddByUrl]', error, { data: error?.response?.data })
       await ctx.reply('Желание не удалось добавить, попробуйте другую ссылку')?.then((response) => {
