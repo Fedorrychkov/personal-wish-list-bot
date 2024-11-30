@@ -20,7 +20,13 @@ import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../shared'
 import { WISH_CALLBACK_DATA } from './../wish/constants'
-import { botWelcomeCommandsText, botWelcomeUserNameText, MAIN_CALLBACK_DATA, START_PAYLOAD_KEYS } from './constants'
+import {
+  botWelcomeCommandsText,
+  botWelcomeUserNameText,
+  MAIN_CALLBACK_DATA,
+  NEWS_SCENE_NAME,
+  START_PAYLOAD_KEYS,
+} from './constants'
 
 @Update()
 @Injectable()
@@ -357,6 +363,22 @@ export class MainSceneService {
     )
 
     await ctx.reply('Роли пользователей обновлены до роли USER')
+  }
+
+  @Command(MAIN_CALLBACK_DATA.sendNewsNotificationToAllUsers)
+  @Action(MAIN_CALLBACK_DATA.sendNewsNotificationToAllUsers)
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  async sendNewsNotificationToAllUsers(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
+    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+
+    if (!isAdmin) {
+      await ctx.reply('У вас нет прав на это действие')
+
+      return
+    }
+
+    await ctx.scene.enter(NEWS_SCENE_NAME)
   }
 
   @Command(MAIN_CALLBACK_DATA.updateWishStatusToActive)

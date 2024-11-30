@@ -4,11 +4,12 @@ import { FileModule } from 'src/modules/file'
 import { SharedSceneModule } from 'src/scenes/shared'
 
 import { MainSceneService } from './main.scene.service'
+import { SendNewsSceneService } from './send-news'
 
 @Module({
   imports: [UserModule, WishModule, SharedSceneModule, FileModule, CustomConfigModule, CategoryModule],
   controllers: [],
-  providers: [MainSceneService],
+  providers: [MainSceneService, SendNewsSceneService],
   exports: [],
 })
 export class MainSceneModule {}

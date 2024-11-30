@@ -61,15 +61,16 @@ export class CategoryService {
       throw new NotFoundException('Category does not exist')
     }
 
-    const userWhitelist = category?.isPrivate
-      ? await this.categoryWhitelistEntity.findAll({
-          categoryId: category.id,
-          whitelistedUserId: user?.id?.toString(),
-          userId: category.userId,
-        })
-      : await Promise.resolve(undefined)
+    const userWhitelist =
+      category?.isPrivate && category?.userId !== user?.id?.toString()
+        ? await this.categoryWhitelistEntity.findAll({
+            categoryId: category.id,
+            whitelistedUserId: user?.id?.toString(),
+            userId: category.userId,
+          })
+        : await Promise.resolve(undefined)
 
-    if (category?.isPrivate && !userWhitelist?.length) {
+    if (category?.isPrivate && category?.userId !== user?.id?.toString() && !userWhitelist?.length) {
       throw new ForbiddenException('You cannot see this category')
     }
 
