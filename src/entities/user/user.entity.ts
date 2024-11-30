@@ -66,7 +66,7 @@ export class UserEntity {
     return list
   }
 
-  getValidProperties(user: UserDocument) {
+  getValidProperties(user: UserDocument, isUpdate = false) {
     const dueDateMillis = time().valueOf()
     const createdAt = Timestamp.fromMillis(dueDateMillis)
 
@@ -81,8 +81,9 @@ export class UserEntity {
       isBot: user.isBot || false,
       appOnboardingKey: user.appOnboardingKey || null,
       phone: user.phone || null,
+      role: user.role || null,
       createdAt: user.createdAt || createdAt,
-      updatedAt: user.updatedAt || null,
+      updatedAt: isUpdate ? createdAt : user.updatedAt || null,
     }
   }
 }

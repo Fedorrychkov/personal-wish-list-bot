@@ -73,6 +73,18 @@ export class WishController {
   }
 
   @UseGuards(TgDataGuard)
+  @Patch('/given/:id')
+  async givenToggle(@UserContext() user: TgInitUser, @Param() params: { id: string }): Promise<WishDocument> {
+    return this.wishService.givenToggle(user, params?.id)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Post('/copy/:id')
+  async copy(@UserContext() user: TgInitUser, @Param() params: { id: string }): Promise<WishDocument> {
+    return this.wishService.copy(user, params?.id)
+  }
+
+  @UseGuards(TgDataGuard)
   @Delete('/:id')
   async deleteItem(@UserContext() user: TgInitUser, @Param() params: { id: string }) {
     return this.wishService.deleteItem(user, params?.id)

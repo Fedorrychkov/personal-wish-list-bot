@@ -1,4 +1,4 @@
-import { WishDocument } from 'src/entities'
+import { WishDocument, WishStatus } from 'src/entities'
 
 export type WishPatchDto = {
   name?: WishDocument['name']
@@ -9,4 +9,5 @@ export type WishPatchDto = {
 
 export type WishFilterDto = {
   categoryId?: string
+  status?: WishStatus
 }

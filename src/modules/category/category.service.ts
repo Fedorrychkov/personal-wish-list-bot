@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { CategoryDocument, CategoryWhitelistEntity, CategroyEntity, WishEntity } from 'src/entities'
+import { CategoryDocument, CategoryWhitelistEntity, CategroyEntity, WishEntity, WishStatus } from 'src/entities'
 import { TgInitUser } from 'src/types'
 
 import { CategoryDto } from './dto'
@@ -52,6 +52,34 @@ export class CategoryService {
     }
 
     return this.filterByCategoryWhitelist(response, user)
+  }
+
+  public async getWishCount(id: string, user?: TgInitUser): Promise<{ count: number }> {
+    const category = await this.categroyEntity.get(id)
+
+    if (!category) {
+      throw new NotFoundException('Category does not exist')
+    }
+
+    const userWhitelist = category?.isPrivate
+      ? await this.categoryWhitelistEntity.findAll({
+          categoryId: category.id,
+          whitelistedUserId: user?.id?.toString(),
+          userId: category.userId,
+        })
+      : await Promise.resolve(undefined)
+
+    if (category?.isPrivate && !userWhitelist?.length) {
+      throw new ForbiddenException('You cannot see this category')
+    }
+
+    const response = await this.wishEntity.findAllCount({
+      categoryId: category.id,
+      userId: category.userId,
+      status: WishStatus.ACTIVE,
+    })
+
+    return response
   }
 
   public async getItem(id: string): Promise<CategoryDocument> {

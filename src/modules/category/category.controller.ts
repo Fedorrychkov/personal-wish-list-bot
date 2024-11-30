@@ -30,6 +30,12 @@ export class CategoryController {
   }
 
   @UseGuards(TgDataGuard)
+  @Get('/:id/wish-count')
+  async wishCount(@UserContext() user: TgInitUser, @Param() params: { id: string }): Promise<{ count: number }> {
+    return this.categoryService.getWishCount(params?.id, user)
+  }
+
+  @UseGuards(TgDataGuard)
   @Get('/:id')
   async item(@Param() params: { id: string }): Promise<CategoryDocument> {
     return this.categoryService.getItem(params?.id)

@@ -8,7 +8,7 @@ import {
   getWishItemKeyboard,
 } from 'src/constants/keyboards'
 import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
-import { UserDocument, UserEntity, WishEntity } from 'src/entities'
+import { UserDocument, UserEntity, UserRole, WishEntity, WishStatus } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { getImageBuffer, safeAtob, safeParse } from 'src/helpers'
 import { CustomConfigService, WishService } from 'src/modules'
@@ -321,13 +321,89 @@ export class MainSceneService {
     })
   }
 
+  @Command(MAIN_CALLBACK_DATA.updateUserRoleToUser)
+  @Action(MAIN_CALLBACK_DATA.updateUserRoleToUser)
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  async updateUserRolesToUser(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
+    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+
+    if (!isAdmin) {
+      await ctx.reply('У вас нет прав на это действие')
+
+      return
+    }
+
+    const users = await this.userEntity.findAll({})
+
+    await Promise.all(
+      users.map(async (user) => {
+        try {
+          if (!user.role.includes(UserRole.ADMIN) || !user?.role?.length) {
+            const payload = this.userEntity.getValidProperties(
+              {
+                ...user,
+                role: [UserRole.USER],
+              },
+              true,
+            )
+
+            await this.userEntity.createOrUpdate(payload)
+          }
+        } catch (error) {
+          this.logger.error(error)
+        }
+      }),
+    )
+
+    await ctx.reply('Роли пользователей обновлены до роли USER')
+  }
+
+  @Command(MAIN_CALLBACK_DATA.updateWishStatusToActive)
+  @Action(MAIN_CALLBACK_DATA.updateWishStatusToActive)
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  async updateWishStatusToActive(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
+    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+
+    if (!isAdmin) {
+      await ctx.reply('У вас нет прав на это действие')
+
+      return
+    }
+
+    const wishes = await this.wishEntity.findAll({})
+
+    await Promise.all(
+      wishes.map(async (wish) => {
+        try {
+          if (!wish.status) {
+            const payload = this.wishEntity.getValidProperties(
+              {
+                ...wish,
+                status: WishStatus.ACTIVE,
+              },
+              true,
+            )
+
+            await this.wishEntity.createOrUpdate(payload)
+          }
+        } catch (error) {
+          this.logger.error(error)
+        }
+      }),
+    )
+
+    await ctx.reply('Статусы желаний обновлены до ACTIVE')
+  }
+
   @Command(MAIN_CALLBACK_DATA.getReleaseNotes)
   @Action(MAIN_CALLBACK_DATA.getReleaseNotes)
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard)
   async getReleaseNotes(@Ctx() ctx: SceneContext) {
     const promise = async () =>
-      new Promise((resolve) => {
+      new Promise<string>((resolve) => {
         fs.readFile('./CHANGELOG.md', 'utf8', (err, data) => {
           if (err) {
             resolve('')
@@ -339,11 +415,15 @@ export class MainSceneService {
 
     const content = await promise()
 
-    const text = content
+    const updates = content.split('======').slice(0, 3)
+
+    const updateText = updates.map((update) => update.replace('======', '').trim()).join('\n\n')
+
+    const text = updateText
       ? `
-Список обновлений бота
+Список последних трех обновлений бота
 ______
-${content}
+${updateText}
 `
       : 'Не удалось найти CHANGELOG'
 

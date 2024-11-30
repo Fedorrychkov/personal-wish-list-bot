@@ -30,4 +30,6 @@ export const MAIN_CALLBACK_DATA = {
   getReleaseNotes: 'get_release_notes',
   menu: 'menu',
   help: 'help',
+  updateUserRoleToUser: 'update_user_role_to_user',
+  updateWishStatusToActive: 'update_wish_status_to_active',
 }

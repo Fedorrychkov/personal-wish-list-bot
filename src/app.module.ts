@@ -120,6 +120,14 @@ export class AppModule {
         method: RequestMethod.ALL,
       },
       {
+        path: 'v1/wish/given/:id',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/wish/copy/:id',
+        method: RequestMethod.ALL,
+      },
+      {
         path: 'v1/file/:id',
         method: RequestMethod.ALL,
       },
@@ -129,6 +137,10 @@ export class AppModule {
       },
       {
         path: 'v1/category/:id',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/category/:id/wish-count',
         method: RequestMethod.ALL,
       },
       {

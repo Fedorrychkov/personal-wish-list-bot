@@ -1,5 +1,7 @@
 import { Timestamp } from '@google-cloud/firestore'
 
+import { WishStatus } from './wish.types'
+
 /**
  * В моделях сущностей не может быть undefined полей, это ограничение firestore, разрешен только null или значения
  */
@@ -21,6 +23,7 @@ export class WishDocument {
   link?: string | null
   categoryId?: string | null
   imageUrl?: string
+  status?: WishStatus | null
   createdAt?: Timestamp | null
   updatedAt?: Timestamp | null
 }

@@ -14,8 +14,9 @@ import {
   getOwnerWishItemKeyboard,
   getWishFavoriteKeyboard,
 } from 'src/constants'
-import { FavoriteDocument, UserEntity, WishDocument, WishEntity } from 'src/entities'
+import { FavoriteDocument, UserEntity, WishDocument, WishEntity, WishStatus } from 'src/entities'
 import { ERROR_CODES } from 'src/errors'
+import { getUniqueId } from 'src/helpers'
 import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services'
 import { TgInitUser } from 'src/types'
 import { Telegraf } from 'telegraf'
@@ -223,6 +224,67 @@ export class WishService {
     }
 
     throw new InternalServerErrorException('Something goes wrong...')
+  }
+
+  public async givenToggle(user: TgInitUser, id: string): Promise<WishDocument> {
+    const { doc, data: response } = await this.wishEntity.getUpdate(id)
+
+    this.validateNotFound(response)
+
+    if (user?.id?.toString() !== response?.userId) {
+      const code = ERROR_CODES.wish.codes.WISH_PERMISSION_DENIED
+      const message = ERROR_CODES.wish.messages[code]
+
+      throw new ForbiddenException({ code, message })
+    }
+
+    const updatedWish = { ...response, status: WishStatus.GIVEN }
+    const payload = this.wishEntity.getValidProperties(updatedWish)
+    await doc.update(payload)
+
+    if (
+      user.id?.toString() === updatedWish.userId &&
+      user.id?.toString() !== updatedWish.bookedUserId &&
+      !!updatedWish?.bookedUserId &&
+      updatedWish.isBooked
+    ) {
+      const subscribedUser = await this.userEntity.get(updatedWish.bookedUserId)
+
+      const text = getDeleteMessageToSubscriber(updatedWish?.name, user?.username)
+
+      this.telegraf.telegram.sendMessage(subscribedUser?.chatId, text, {
+        reply_markup: {
+          inline_keyboard: [
+            ...getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+            getAnotherUserWishListById(user?.id?.toString(), user?.username),
+          ],
+        },
+      })
+    }
+
+    return payload
+  }
+
+  public async copy(user: TgInitUser, id: string): Promise<WishDocument> {
+    const wish = await this.wishEntity.get(id)
+
+    this.validateNotFound(wish)
+
+    const payload = this.wishEntity.getValidProperties({
+      ...wish,
+      id: getUniqueId(),
+      categoryId: null,
+      status: WishStatus.ACTIVE,
+      isBooked: false,
+      bookedUserId: null,
+      userId: user?.id?.toString(),
+      createdAt: null,
+      updatedAt: null,
+    })
+
+    const newWish = await this.wishEntity.createOrUpdate(payload)
+
+    return newWish
   }
 
   public async deleteItem(user: TgInitUser, id: string) {

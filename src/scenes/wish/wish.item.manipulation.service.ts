@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { Action, Ctx, Update } from 'nestjs-telegraf'
 import { getMainKeyboards, getOwnerWishItemKeyboard } from 'src/constants'
 import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
-import { UserDocument, WishEntity } from 'src/entities'
+import { UserDocument, WishEntity, WishStatus } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { CustomConfigService, WishService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
@@ -235,6 +235,8 @@ export class WishItemManipulationService {
       id: null,
       userId,
       isBooked: false,
+      bookedUserId: null,
+      status: WishStatus.ACTIVE,
       updatedAt: null,
     })
 

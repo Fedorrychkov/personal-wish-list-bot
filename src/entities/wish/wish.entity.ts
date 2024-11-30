@@ -50,18 +50,9 @@ export class WishEntity {
     return true
   }
 
-  private findAllGenerator() {
+  private findAllGenerator(filter: WishFilter) {
     const collectionRef = this.collection
-    const query: firebase.firestore.Query<WishDocument> = collectionRef
-
-    return query
-  }
-
-  async findAll(filter: WishFilter): Promise<WishDocument[]> {
-    const list: WishDocument[] = []
-    let query = this.findAllGenerator()
-
-    query = query.orderBy('createdAt', 'desc')
+    let query: firebase.firestore.Query<WishDocument> = collectionRef
 
     if (filter?.userId) {
       query = query.where('userId', '==', filter?.userId)
@@ -71,13 +62,34 @@ export class WishEntity {
       query = query.where('categoryId', '==', filter?.categoryId)
     }
 
+    if (filter?.status) {
+      query = query.where('status', '==', filter?.status)
+    }
+
+    return query
+  }
+
+  async findAll(filter: WishFilter): Promise<WishDocument[]> {
+    const list: WishDocument[] = []
+    let query = this.findAllGenerator(filter)
+
+    query = query.orderBy('createdAt', 'desc')
+
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))
 
     return list
   }
 
-  getValidProperties(document: { id?: string } & Omit<WishDocument, 'id'>) {
+  async findAllCount(filter: WishFilter): Promise<{ count: number }> {
+    const snapshot = await this.findAllGenerator(filter).count().get()
+
+    const count = snapshot.data().count
+
+    return { count }
+  }
+
+  getValidProperties(document: { id?: string } & Omit<WishDocument, 'id'>, isUpdate = false) {
     const dueDateMillis = time().valueOf()
     const createdAt = Timestamp.fromMillis(dueDateMillis)
 
@@ -91,8 +103,9 @@ export class WishEntity {
       link: document.link || null,
       categoryId: document.categoryId || null,
       imageUrl: document.imageUrl || null,
+      status: document.status || null,
       createdAt: document.createdAt || createdAt,
-      updatedAt: document.updatedAt || null,
+      updatedAt: isUpdate ? createdAt : document.updatedAt || null,
     }
   }
 }

@@ -24,3 +24,14 @@ ${wishName || 'Название не установлено'}
 
   return text
 }
+
+export const getGivenMessageToSubscriber = (wishName: string, username: string) => {
+  const text = `
+Пользователь: @${username}, которому вы хотели подарить:
+${wishName || 'Название не установлено'}
+Только что перенес желание в исполненные.
+Проверьте актуальный список желаний пользователя!
+`
+
+  return text
+}

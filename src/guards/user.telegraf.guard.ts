@@ -1,7 +1,7 @@
 import { ExecutionContext, Inject, Logger } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { TelegrafExecutionContext } from 'nestjs-telegraf'
-import { UserEntity } from 'src/entities'
+import { UserEntity, UserRole } from 'src/entities'
 import { TelegrafUpdateType } from 'src/types'
 import { Context } from 'telegraf'
 
@@ -38,6 +38,7 @@ export class UserTelegrafGuard extends SafeGuardInterceptor {
         username: from?.username?.toLowerCase(),
         isPremium: from?.is_premium,
         chatId: from?.id?.toString(),
+        role: [UserRole.USER],
       })
 
       request.userContext = user ? user : validContextUser
