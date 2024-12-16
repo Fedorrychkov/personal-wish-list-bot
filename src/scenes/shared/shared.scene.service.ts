@@ -9,7 +9,7 @@ import {
   getWishItemKeyboard,
   getWishSceneKeyboards,
 } from 'src/constants/keyboards'
-import { UserDocument, WishDocument, WishEntity } from 'src/entities'
+import { UserDocument, WishDocument, WishEntity, WishStatus } from 'src/entities'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { CustomConfigService, WishService } from 'src/modules'
 import { SceneContext } from 'telegraf/typings/scenes'
@@ -150,6 +150,7 @@ export class SharedService {
         name: title || openGraph?.title || '',
         description: openGraph?.description || '',
         imageUrl: tryToGetUrlOrEmptyString(openGraph?.imageUrl) || '',
+        status: WishStatus.ACTIVE,
         link: url || '',
       })
 

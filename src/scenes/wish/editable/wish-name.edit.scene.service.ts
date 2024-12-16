@@ -81,8 +81,8 @@ export class WishNameEditSceneService {
       return
     }
 
-    if (name.length > 160) {
-      await handleUpdateLastMessage('Название не должно быть длинее 160 символов')
+    if (name.length > 560) {
+      await handleUpdateLastMessage('Название не должно быть длинее 560 символов')
 
       return
     }

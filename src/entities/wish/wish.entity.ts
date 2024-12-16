@@ -4,7 +4,7 @@ import firebase from 'firebase-admin'
 import { getUniqueId, time } from 'src/helpers'
 
 import { WishDocument } from './wish.document'
-import { WishFilter } from './wish.types'
+import { WishFilter, WishStatus } from './wish.types'
 
 @Injectable()
 export class WishEntity {
@@ -103,7 +103,7 @@ export class WishEntity {
       link: document.link || null,
       categoryId: document.categoryId || null,
       imageUrl: document.imageUrl || null,
-      status: document.status || null,
+      status: document.status ? document.status : WishStatus.ACTIVE,
       createdAt: document.createdAt || createdAt,
       updatedAt: isUpdate ? createdAt : document.updatedAt || null,
     }

@@ -80,8 +80,8 @@ export class WishDescriptionEditSceneService {
       return
     }
 
-    if (description.length > 600) {
-      await handleUpdateLastMessage('Описание не должно быть длинее 600 символов')
+    if (description.length > 1600) {
+      await handleUpdateLastMessage('Описание не должно быть длинее 1600 символов')
 
       return
     }
