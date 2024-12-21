@@ -35,6 +35,12 @@ export class WishController {
   }
 
   @UseGuards(TgDataGuard)
+  @Get('/list/count')
+  async listCount(@UserContext() user: TgInitUser, @Query() filter: { userId?: string }): Promise<{ count: number }> {
+    return this.wishService.getWishSize(filter?.userId || user?.id?.toString?.())
+  }
+
+  @UseGuards(TgDataGuard)
   @Post('/')
   async create(@UserContext() user: TgInitUser, @Body() body: WishPatchDto): Promise<WishDocument> {
     return this.wishService.createAndNotifySubscribers(user, body)

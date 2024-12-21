@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
 import { UserContext } from 'src/decorator'
 import { FavoriteDocument } from 'src/entities'
 import { TgDataGuard } from 'src/guards'
@@ -15,6 +15,18 @@ export class FavoriteController {
   @Get('/list')
   async list(@UserContext() user: TgInitUser): Promise<FavoriteDocument[]> {
     return this.favoriteService.getList(user?.id)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Get('/subscribers')
+  async subscribers(@Query() filter: { userId?: string }): Promise<FavoriteDocument[]> {
+    return this.favoriteService.getSubscribersList(filter?.userId)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Get('/subscribes')
+  async subscribes(@Query() filter: { userId?: string }): Promise<FavoriteDocument[]> {
+    return this.favoriteService.getList(filter?.userId)
   }
 
   @UseGuards(TgDataGuard)

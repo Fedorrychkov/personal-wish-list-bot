@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { FavoriteDocument, FavoriteEntity } from 'src/entities'
+import { ERROR_CODES } from 'src/errors'
 import { TgInitUser } from 'src/types'
 
 import { FavoriteDto } from './dto'
@@ -53,6 +54,18 @@ export class FavoriteService {
   }
 
   public async create(user: TgInitUser, dto: FavoriteDto): Promise<FavoriteDocument> {
+    const [favorite] = await this.favoriteEntity.findAll({
+      userId: user?.id?.toString(),
+      favoriteUserId: dto.favoriteUserId,
+    })
+
+    if (favorite) {
+      throw new BadRequestException({
+        code: ERROR_CODES.favorite.codes.ALREADY_SUBSCRIBED,
+        message: ERROR_CODES.favorite.messages.ALREADY_SUBSCRIBED,
+      })
+    }
+
     const wishlistNotifyEnabled =
       typeof dto.wishlistNotifyEnabled === 'string' ? dto.wishlistNotifyEnabled === 'true' : dto.wishlistNotifyEnabled
 

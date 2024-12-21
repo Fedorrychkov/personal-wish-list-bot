@@ -59,6 +59,15 @@ export class WishService {
     }
   }
 
+  public async getWishSize(userId: string) {
+    const response = await this.wishEntity.findAllCount({
+      userId: userId,
+      status: WishStatus.ACTIVE,
+    })
+
+    return response
+  }
+
   public async getList(
     id: string | number,
     filter: WishFilterDto,
