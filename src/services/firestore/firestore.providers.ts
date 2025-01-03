@@ -2,6 +2,8 @@ import {
   CategoryDocument,
   CategoryWhitelistDocument,
   CustomizationDocument,
+  SantaDocument,
+  SantaPlayerDocument,
   UserDocument,
   WishDocument,
 } from 'src/entities'
@@ -18,4 +20,6 @@ export const FirestoreCollectionProviders: string[] = [
   FavoriteDocument.collectionName,
   CustomizationDocument.collectionName,
   CategoryWhitelistDocument.collectionName,
+  SantaDocument.collectionName,
+  SantaPlayerDocument.collectionName,
 ]

@@ -6,6 +6,7 @@ export class CustomConfigService {
   public miniAppUrl: string
   public apiUrl: string
   public tgToken: string
+  public tgBotUsername: string
 
   constructor(
     @Inject(ConfigService)
@@ -14,5 +15,6 @@ export class CustomConfigService {
     this.miniAppUrl = this.configService.get<string>('MINI_APP_URL')
     this.apiUrl = this.configService.get<string>('API_URL')
     this.tgToken = this.configService.get<string>('TELEGRAM_BOT_KEY')
+    this.tgBotUsername = this.configService.get<string>('TG_BOT_USERNAME')
   }
 }

@@ -23,6 +23,7 @@ _____
 export const START_PAYLOAD_KEYS = {
   shareByUserName: 'share_by_username_',
   shareById: 'share_by_id_',
+  santaGame: 'santa_',
 }
 
 export const MAIN_CALLBACK_DATA = {

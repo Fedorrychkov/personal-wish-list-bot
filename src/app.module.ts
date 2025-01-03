@@ -15,8 +15,10 @@ import {
   FileModule,
   UserModule,
 } from './modules'
+import { GameModule } from './modules/games'
 import { MainSceneModule, WishSceneModule } from './scenes'
 import { FavoriteSceneModule } from './scenes/favorite/favorite.scene.module'
+import { GamesSceneModule } from './scenes/games/games.scene.module'
 import { FirestoreModule } from './services'
 import { BucketModule } from './services/bucket'
 
@@ -68,6 +70,8 @@ const session = new LocalSession()
     FavoriteModule,
     CustomizationModule,
     CategoryWhitelistModule,
+    GameModule,
+    GamesSceneModule,
   ],
   controllers: [],
   providers: [],
@@ -181,6 +185,30 @@ export class AppModule {
       },
       {
         path: 'v1/category-whitelist/:id',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/game',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/game/:id/participant',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/game/:id/participant/my',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/game/:id',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/game/by-participant',
+        method: RequestMethod.ALL,
+      },
+      {
+        path: 'v1/game/my',
         method: RequestMethod.ALL,
       },
     )

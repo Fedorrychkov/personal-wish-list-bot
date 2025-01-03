@@ -10,6 +10,7 @@ import {
 import {
   getAnotherUserWishListById,
   getDeleteMessageToSubscriber,
+  getGivenMessageToSubscriber,
   getMainKeyboards,
   getOwnerWishItemKeyboard,
   getWishFavoriteKeyboard,
@@ -259,7 +260,7 @@ export class WishService {
     ) {
       const subscribedUser = await this.userEntity.get(updatedWish.bookedUserId)
 
-      const text = getDeleteMessageToSubscriber(updatedWish?.name, user?.username)
+      const text = getGivenMessageToSubscriber(updatedWish?.name, user?.username)
 
       this.telegraf.telegram.sendMessage(subscribedUser?.chatId, text, {
         reply_markup: {

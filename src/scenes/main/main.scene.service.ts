@@ -9,10 +9,13 @@ import {
 } from 'src/constants/keyboards'
 import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
 import { UserDocument, UserEntity, UserRole, WishEntity, WishStatus } from 'src/entities'
+import { GameStatus } from 'src/entities/santa/santa.types'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { getImageBuffer, safeAtob, safeParse } from 'src/helpers'
 import { CustomConfigService, WishService } from 'src/modules'
 import { CategoryService } from 'src/modules'
+import { GameService } from 'src/modules/games'
+import { GameType } from 'src/modules/games/game.types'
 import { BucketProvider, BucketSharedService, DefaultBucketProvider } from 'src/services/bucket'
 import { ChatTelegrafContextType } from 'src/types'
 import { Context } from 'telegraf'
@@ -43,6 +46,7 @@ export class MainSceneService {
     @Inject(DefaultBucketProvider.bucketName)
     private readonly bucketProvider: BucketProvider,
     private readonly categoryService: CategoryService,
+    private readonly gameService: GameService,
   ) {
     this.bucketService = new BucketSharedService(this.bucketProvider.bucket, MainSceneService.name)
   }
@@ -93,6 +97,59 @@ export class MainSceneService {
         wish,
       }
     }
+  }
+
+  private async checShareGameAndUse(startPayload: string, userContext: UserDocument, ctx: SceneContext) {
+    const isSantaGame = startPayload.includes(START_PAYLOAD_KEYS.santaGame)
+
+    if (isSantaGame) {
+      const gameId = startPayload.replace(START_PAYLOAD_KEYS.santaGame, '')
+      const game = await this.gameService.getGame(GameType.SANTA, gameId)
+
+      try {
+        if (!game) {
+          await ctx.reply('Игра "Секретный Санта" не найдена, обратитесь к создателю игры или администратору бота')
+
+          return
+        }
+
+        if ([GameStatus.CANCELLED, GameStatus.FINISHED].includes(game.status)) {
+          await ctx.reply('Игра "Секретный Санта" уже завершена, обратитесь к создателю игры, если произошла ошибка')
+
+          return
+        }
+
+        await this.gameService.addParticipant(GameType.SANTA, userContext.id, game.id)
+
+        await ctx.reply(`Вы успешно добавлены в игру "Секретный Санта", название игры: ${game.name}`, {
+          reply_markup: {
+            inline_keyboard: [
+              [getMainOpenWebAppButton(`${this.customConfigService.miniAppUrl}/game/${game.id}`, 'Посмотреть')],
+            ],
+          },
+        })
+
+        return game
+      } catch (error) {
+        this.logger.error('Error with add participant to santa game', error)
+
+        if (error.response?.code) {
+          await ctx.reply(error.response.message || 'Произошла ошибка при добавлении вас в игру "Секретный Санта"', {
+            reply_markup: {
+              inline_keyboard: [
+                [getMainOpenWebAppButton(`${this.customConfigService.miniAppUrl}/game/${game.id}`, 'Посмотреть')],
+              ],
+            },
+          })
+
+          return
+        }
+
+        await ctx.reply('Произошла ошибка при добавлении вас в игру "Секретный Санта", обратитесь к создателю игры')
+      }
+    }
+
+    return undefined
   }
 
   private async deprecatedSharePayload(startPayload: string, userContext: UserDocument) {
@@ -231,6 +288,8 @@ export class MainSceneService {
         return
       }
 
+      await this.checShareGameAndUse(startPayload, userContext, ctx)
+
       return
     }
 
@@ -256,6 +315,8 @@ export class MainSceneService {
 
       return
     }
+
+    await this.checShareGameAndUse(startPayload, userContext, ctx)
   }
 
   @Command(MAIN_CALLBACK_DATA.menu)
