@@ -4,6 +4,7 @@ import { backBtn, getMainKeyboards } from 'src/constants/keyboards'
 import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
 import { UserDocument, UserEntity, UserRole } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
+import { timeout } from 'src/helpers'
 import { CustomConfigService } from 'src/modules'
 import { WISH_CALLBACK_DATA } from 'src/scenes/wish'
 import { SceneContext } from 'telegraf/typings/scenes'
@@ -65,20 +66,23 @@ export class SendNewsSceneService {
 
     const users = await this.userEntity.findAll({})
 
-    await Promise.all(
-      users.map(async (user) => {
-        try {
-          await ctx.telegram.sendMessage(user.chatId, newsText, {
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
-            },
-          })
-        } catch (error) {
-          this.logger.error(error)
-        }
-      }),
-    )
+    for (const user of users) {
+      try {
+        await ctx.telegram.sendMessage(user.chatId, newsText, {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          },
+        })
+
+        await timeout(250)
+      } catch (error) {
+        this.logger.error(error, {
+          user: user?.chatId,
+          userId: user?.id,
+        })
+      }
+    }
 
     await ctx.reply('Новость отправлена всем пользователям')
 
@@ -153,30 +157,35 @@ export class SendNewsSceneService {
 
     const users = await this.userEntity.findAll({})
 
-    await Promise.all(
-      users.map(async (user) => {
-        try {
-          if (photos.length > 0) {
-            await ctx.telegram.sendMediaGroup(
-              user.chatId,
-              photos.map((photo) => ({
-                type: 'photo',
-                media: photo.file_id as string,
-              })),
-            )
-          }
-
-          await ctx.telegram.sendMessage(user.chatId, newsText, {
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
-            },
-          })
-        } catch (error) {
-          this.logger.error(error)
+    for (const user of users) {
+      try {
+        if (photos.length > 0) {
+          await ctx.telegram.sendMediaGroup(
+            user.chatId,
+            photos.map((photo) => ({
+              type: 'photo',
+              media: photo.file_id as string,
+            })),
+          )
         }
-      }),
-    )
+
+        await timeout(100)
+
+        await ctx.telegram.sendMessage(user.chatId, newsText, {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          },
+        })
+
+        await timeout(250)
+      } catch (error) {
+        this.logger.error(error, {
+          user: user?.chatId,
+          userId: user?.id,
+        })
+      }
+    }
 
     await ctx.reply('Новость отправлена всем пользователям')
     await ctx.scene.leave()
