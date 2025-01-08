@@ -23,6 +23,19 @@ export class TransactionDocument {
   comissionPercent?: number
   comissionAmount?: string
   comissionCurrency?: AnyCurrency
+  wishId?: string | null
+  /**
+   * Параметр включает в себя полезную нагрузку, например текстовую информацию.
+   */
+  payload?: string | null
+  /**
+   * Данный параметр указывает на то, что существует транзакция, с которой можно что-то сделать
+   */
+  parentTransactionId?: string
+  /**
+   * Данный параметр указывает на то, что существует транзакция, которая зависит от текущей транзакции, и с ней можно что-то сделать
+   */
+  childrenTransactionId?: string
   /**
    * ID игры, к которой привязана транзакция, может быть пустой, еслли это например - поддержка разработчика
    */

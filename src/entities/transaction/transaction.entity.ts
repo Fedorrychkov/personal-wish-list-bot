@@ -1,9 +1,9 @@
 import { CollectionReference, Timestamp } from '@google-cloud/firestore'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import firebase from 'firebase-admin'
-import { getUniqueId, time } from 'src/helpers'
+import { getUniqueId, jsonParse, time } from 'src/helpers'
 
-import { TransactionResponse } from './transaction.api.types'
+import { TransactionPayload, TransactionResponse } from './transaction.api.types'
 import { TransactionDocument } from './transaction.document'
 import { TransactionFilter, TransactionStatus } from './transaction.types'
 
@@ -75,6 +75,14 @@ export class TransactionEntity {
       query = query.where('id', '==', filter?.id)
     }
 
+    if (filter?.wishId) {
+      query = query.where('wishId', '==', filter?.wishId)
+    }
+
+    if (filter?.status) {
+      query = query.where('status', '==', filter?.status)
+    }
+
     return query
   }
 
@@ -92,9 +100,21 @@ export class TransactionEntity {
     return list
   }
 
-  getValidProperties(document: { id?: string } & Omit<TransactionDocument, 'id'>, isUpdate?: boolean) {
+  getValidProperties(document: { id?: string } & Omit<TransactionDocument, 'id'>, isUpdate?: boolean, logKey?: string) {
     const dueDateMillis = time().valueOf()
     const createdAt = Timestamp.fromMillis(dueDateMillis)
+
+    if (document.payload) {
+      const payload = jsonParse<TransactionPayload>(document.payload)
+
+      if (!payload?.type || !payload.message) {
+        this.logger.warn(`Invalid payload: ${document.payload} logKey=${logKey}`, {
+          document,
+          payload,
+          logKey,
+        })
+      }
+    }
 
     return {
       id: document.id || getUniqueId(),
@@ -107,8 +127,12 @@ export class TransactionEntity {
       comissionCurrency: document.comissionCurrency || null,
       provider: document.provider || null,
       providerInvoiceId: document.providerInvoiceId || null,
+      parentTransactionId: document.parentTransactionId || null,
+      childrenTransactionId: document.childrenTransactionId || null,
       status: document.status || TransactionStatus.CREATED,
       gameId: document.gameId || null,
+      payload: document.payload || null,
+      wishId: document.wishId || null,
       refundExpiredAt: document.refundExpiredAt || null,
       refundedAt: document.refundedAt || null,
       expiredAt: document.expiredAt || null,

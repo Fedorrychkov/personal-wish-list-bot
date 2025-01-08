@@ -1,7 +1,7 @@
 import { AnyCurrency } from 'src/types'
 
 import { TransactionDocument } from './transaction.document'
-import { TransactionType } from './transaction.types'
+import { TransactionPayloadType, TransactionType } from './transaction.types'
 
 export type TransactionResponse = Omit<
   TransactionDocument,
@@ -25,6 +25,31 @@ export type TransactionBalanceTopup = {
   type?: TransactionType
 }
 
+export type BalanceTransfer = {
+  amount: string
+  currency: AnyCurrency
+  targetUserId: string
+  isAnonymous?: boolean
+}
+
 export type TransactionBalanceTopupResponse = {
   invoiceLink: string
+}
+
+export type TransactionPayload = {
+  type: TransactionPayloadType
+  message: string
+  userId?: string
+  isAnonymous?: boolean
+}
+
+export type Purchase = {
+  amount: string
+  currency: AnyCurrency
+  payload: TransactionPayload
+  wishId?: string
+}
+
+export type PurchaseFilter = {
+  wishId?: string
 }

@@ -1,6 +1,9 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common'
 import { UserContext } from 'src/decorator'
 import {
+  BalanceTransfer,
+  Purchase,
+  PurchaseFilter,
   TransactionBalanceItem,
   TransactionBalanceTopup,
   TransactionBalanceTopupResponse,
@@ -19,6 +22,30 @@ export class TransactionController {
   @Get('/list')
   async list(@UserContext() user: TgInitUser): Promise<TransactionResponse[]> {
     const transactions = await this.transactionService.getList(user?.id)
+
+    return transactions.map((transaction) => this.transactionService.transform(transaction))
+  }
+
+  @UseGuards(TgDataGuard)
+  @Post('/balance/transfer')
+  async transfer(@UserContext() user: TgInitUser, @Body() body: BalanceTransfer): Promise<TransactionResponse> {
+    const transaction = await this.transactionService.transfer(user, body)
+
+    return this.transactionService.transform(transaction)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Post('/purchase')
+  async purchase(@UserContext() user: TgInitUser, @Body() body: Purchase): Promise<TransactionResponse> {
+    const transaction = await this.transactionService.purchase(user, body)
+
+    return this.transactionService.transform(transaction)
+  }
+
+  @UseGuards(TgDataGuard)
+  @Get('/purchase')
+  async findPurchase(@UserContext() user: TgInitUser, @Query() filter: PurchaseFilter): Promise<TransactionResponse[]> {
+    const transactions = await this.transactionService.findPurchase(user, filter)
 
     return transactions.map((transaction) => this.transactionService.transform(transaction))
   }

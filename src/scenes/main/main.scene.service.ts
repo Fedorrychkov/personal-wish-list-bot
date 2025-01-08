@@ -2,6 +2,7 @@ import { Timestamp } from '@google-cloud/firestore'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import * as fs from 'fs'
 import { Action, Command, Ctx, Help, On, Start, Update } from 'nestjs-telegraf'
+import { TRANSACTION_DEPOSIT_COMISSION, TRANSACTION_DEPOSIT_COMISSION_NUMBER } from 'src/constants'
 import {
   getMainKeyboards,
   getMainOpenWebAppButton,
@@ -21,7 +22,7 @@ import {
 } from 'src/entities'
 import { GameStatus } from 'src/entities/santa/santa.types'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
-import { getImageBuffer, safeAtob, safeParse, time } from 'src/helpers'
+import { getImageBuffer, jsonParse, safeAtob, time } from 'src/helpers'
 import { CustomConfigService, TransactionService, WishService } from 'src/modules'
 import { CategoryService } from 'src/modules'
 import { GameService } from 'src/modules/games'
@@ -70,7 +71,7 @@ export class MainSceneService {
      * cId: categoryId
      * wId: wishId
      */
-    const object = safeParse<{ id?: string; cId?: string; wId?: string }>(parsed)
+    const object = jsonParse<{ id?: string; cId?: string; wId?: string }>(parsed)
 
     if (object?.id) {
       const sharedUser = await this.userEntity?.get(object.id)
@@ -590,7 +591,7 @@ https://t.me/personal_wish_list_bot?start=${shareText}
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async userTopupXtr(@Ctx() ctx: SceneContext) {
     await ctx.reply(
-      'Выберите сумму пополнения баланса. Средства можно вернуть в течении 21 дня (вместе с комиссией). При оплате, будет удержана комиссия в размере 10%',
+      `Выберите сумму пополнения баланса. Средства можно вернуть в течении 21 дня (вместе с комиссией). При оплате, будет удержана комиссия в размере ${TRANSACTION_DEPOSIT_COMISSION}%`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -650,7 +651,7 @@ https://t.me/personal_wish_list_bot?start=${shareText}
       await ctx.replyWithInvoice({
         title: 'Пополнение баланса',
         description: `Пополнение баланса для использования в боте. К зачислению: ${
-          Number(amount) - Number(amount) * 0.1
+          Number(amount) - Number(amount) * TRANSACTION_DEPOSIT_COMISSION_NUMBER
         } ⭐️`,
         payload: 'user_topup_with_xtr',
         provider_token: '',
