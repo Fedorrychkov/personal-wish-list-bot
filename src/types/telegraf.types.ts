@@ -1,3 +1,5 @@
+import { AnyCurrency, AnyString } from './shared.types'
+
 type TelegrafChatType = {
   id: number
   title?: string
@@ -67,4 +69,15 @@ export type ChatTelegrafContextType = {
   from?: TelegrafFromType
   chat?: TelegrafChatType
   isEditableAvailable: boolean
+}
+
+export type SuccessfulPaymentType = {
+  currency: AnyCurrency
+  total_amount: number
+  invoice_payload: 'support_with_xtr' | 'user_topup_with_xtr' | AnyString
+  /**
+   * ID for refund
+   */
+  telegram_payment_charge_id: AnyString
+  provider_payment_charge_id: AnyString
 }

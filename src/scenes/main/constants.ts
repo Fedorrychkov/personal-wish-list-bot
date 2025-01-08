@@ -1,6 +1,7 @@
 export const botWelcomeCommandsText = `
 <b>Бот умеет:</b>
 
+⭐️ Принимать оплаты в Telegram Stars (пожертвования и пополнение баланса)
 🥳 Добавление желание по ссылке и без
 👀 Просмотр своих и чужих списков желаний
 📦 Бронирование желаний
@@ -34,6 +35,12 @@ export const MAIN_CALLBACK_DATA = {
   updateUserRoleToUser: 'update_user_role_to_user',
   updateWishStatusToActive: 'update_wish_status_to_active',
   sendNewsNotificationToAllUsers: 'send_news_notification_to_all_users',
+  paySupport: 'paysupport',
+  supportXtr: 'support_xtr',
+  userTopupXtr: 'user_topup_xtr',
+  supportWithXtr: 'support_with_xtr',
+  userTopupWithXtr: 'user_topup_with_xtr',
+  refundTransaction: 'refund_transaction',
 }
 
 export const NEWS_SCENE_NAME = 'newsScene'

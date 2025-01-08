@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common'
+import { MiddlewareConsumer, Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ScheduleModule } from '@nestjs/schedule'
 import * as cors from 'cors'
@@ -13,6 +13,7 @@ import {
   CustomizationModule,
   FavoriteModule,
   FileModule,
+  TransactionModule,
   UserModule,
 } from './modules'
 import { GameModule } from './modules/games'
@@ -72,145 +73,22 @@ const session = new LocalSession()
     CategoryWhitelistModule,
     GameModule,
     GamesSceneModule,
+    TransactionModule,
   ],
   controllers: [],
   providers: [],
 })
 export class AppModule {
+  constructor(private readonly configService: ConfigService) {}
+
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(cors({ origin: true })).forRoutes(
-      {
-        path: 'v1/user',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/user/onboarding',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/user/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/user/find/username/:username',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/user/avatar',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/wish',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/wish/list',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/wish/list/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/wish/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/wish/:id/image',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/wish/book/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/wish/given/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/wish/copy/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/file/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/category',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/category/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/category/:id/wish-count',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/category/list',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/category/list/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/favorite',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/favorite/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/favorite/list',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/customization',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/customization/:userId',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/category-whitelist/list',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/category-whitelist',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/category-whitelist/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/game',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/game/:id/participant',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/game/:id/participant/my',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/game/:id',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/game/by-participant',
-        method: RequestMethod.ALL,
-      },
-      {
-        path: 'v1/game/my',
-        method: RequestMethod.ALL,
-      },
-    )
+    consumer
+      .apply(
+        cors({
+          origin: this.configService.get<string>('MINI_APP_URL'),
+          credentials: true,
+        }),
+      )
+      .forRoutes('*')
   }
 }

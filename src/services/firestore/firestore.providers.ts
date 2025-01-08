@@ -2,13 +2,14 @@ import {
   CategoryDocument,
   CategoryWhitelistDocument,
   CustomizationDocument,
+  FavoriteDocument,
+  FileDocument,
   SantaDocument,
   SantaPlayerDocument,
+  TransactionDocument,
   UserDocument,
   WishDocument,
 } from 'src/entities'
-import { FavoriteDocument } from 'src/entities/favorite'
-import { FileDocument } from 'src/entities/file'
 
 export const FirestoreDatabaseProvider = 'firestoredb'
 export const FirestoreOptionsProvider = 'firestoreOptions'
@@ -22,4 +23,5 @@ export const FirestoreCollectionProviders: string[] = [
   CategoryWhitelistDocument.collectionName,
   SantaDocument.collectionName,
   SantaPlayerDocument.collectionName,
+  TransactionDocument.collectionName,
 ]
