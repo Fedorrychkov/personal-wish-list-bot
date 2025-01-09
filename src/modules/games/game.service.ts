@@ -64,6 +64,14 @@ export class GameService {
     throw new BadRequestException('Invalid game type')
   }
 
+  async getMySantaParticipant(type: GameType, id: string, user: TgInitUser): Promise<GameParticipant> {
+    if (type === GameType.SANTA) {
+      return this.santaService.getMySantaParticipant(id, user)
+    }
+
+    throw new BadRequestException('Invalid game type')
+  }
+
   async getMySanta(type: GameType, id: string, user: TgInitUser): Promise<GameParticipant> {
     if (type === GameType.SANTA) {
       return this.santaService.getMySanta(id, user)

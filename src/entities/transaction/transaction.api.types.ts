@@ -48,8 +48,10 @@ export type Purchase = {
   currency: AnyCurrency
   payload: TransactionPayload
   wishId?: string
+  santaGameId?: string
 }
 
 export type PurchaseFilter = {
   wishId?: string
+  santaGameId?: string
 }

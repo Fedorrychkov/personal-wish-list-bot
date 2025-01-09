@@ -31,6 +31,12 @@ export class GameController {
   }
 
   @UseGuards(TgDataGuard)
+  @Get('/:id/participant/my/santa')
+  async getMySantaParticipant(@Param('id') id: string, @UserContext() user: TgInitUser): Promise<GameParticipant> {
+    return this.gameService.getMySantaParticipant(GameType.SANTA, id, user)
+  }
+
+  @UseGuards(TgDataGuard)
   @Get('/my')
   async getMyGames(@UserContext() user: TgInitUser, @Query() filter: GameFilters): Promise<GameResponse[]> {
     return this.gameService.getGames(GameType.SANTA, { ...filter, userId: user.id?.toString() })

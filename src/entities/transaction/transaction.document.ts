@@ -24,6 +24,7 @@ export class TransactionDocument {
   comissionAmount?: string
   comissionCurrency?: AnyCurrency
   wishId?: string | null
+  santaGameId?: string | null
   /**
    * Параметр включает в себя полезную нагрузку, например текстовую информацию.
    */

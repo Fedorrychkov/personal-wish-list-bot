@@ -83,6 +83,10 @@ export class TransactionEntity {
       query = query.where('status', '==', filter?.status)
     }
 
+    if (filter?.santaGameId) {
+      query = query.where('santaGameId', '==', filter?.santaGameId)
+    }
+
     return query
   }
 
@@ -129,6 +133,7 @@ export class TransactionEntity {
       providerInvoiceId: document.providerInvoiceId || null,
       parentTransactionId: document.parentTransactionId || null,
       childrenTransactionId: document.childrenTransactionId || null,
+      santaGameId: document.santaGameId || null,
       status: document.status || TransactionStatus.CREATED,
       gameId: document.gameId || null,
       payload: document.payload || null,

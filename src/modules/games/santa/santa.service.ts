@@ -89,6 +89,26 @@ export class SantaService {
       .find((participant) => participant.userId === user.id?.toString())
   }
 
+  async getMySantaParticipant(id: string, user: TgInitUser): Promise<GameParticipant> {
+    const participants = await this.santaPlayerEntity.findAll({
+      santaGameId: id,
+    })
+
+    return participants
+      .map((participant) => ({
+        id: participant.id,
+        userId: participant.userId,
+        gameId: participant.santaGameId,
+        type: GameType.SANTA,
+        isGameConfirmed: participant.isSantaConfirmed,
+        isGameFinished: participant.isGameFinished,
+        recipientUserId: participant.santaRecipientUserId,
+        createdAt: participant.createdAt,
+        updatedAt: participant.updatedAt,
+      }))
+      .find((participant) => participant.recipientUserId === user.id?.toString())
+  }
+
   async getMySanta(id: string, user: TgInitUser): Promise<GameParticipant> {
     const participants = await this.santaPlayerEntity.findAll({
       santaGameId: id,

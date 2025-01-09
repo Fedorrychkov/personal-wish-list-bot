@@ -2,7 +2,6 @@ import { Timestamp } from '@google-cloud/firestore'
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import {
   getMainOpenWebAppButton,
-  TRANSACTION_BOOKED_USERS_XTR_AMOUNT,
   TRANSACTION_DEPOSIT_COMISSION,
   TRANSACTION_DEPOSIT_COMISSION_NUMBER,
   TRANSACTION_WITHDRAW_COMISSION,
@@ -24,7 +23,6 @@ import {
   TransactionResponse,
   TransactionStatus,
   TransactionType,
-  WishEntity,
 } from 'src/entities'
 import { ERROR_CODES } from 'src/errors'
 import { getUniqueId, jsonStringify, time, truncate } from 'src/helpers'
@@ -32,6 +30,7 @@ import { TelegrafCustomService } from 'src/services'
 import { TgInitUser } from 'src/types'
 
 import { CustomConfigService } from '../config'
+import { TransactionPurchaseService } from './transaction.purchase.service'
 
 @Injectable()
 export class TransactionService {
@@ -41,7 +40,7 @@ export class TransactionService {
     private readonly transactionEntity: TransactionEntity,
     private readonly telegrafCustomService: TelegrafCustomService,
     private readonly customConfigService: CustomConfigService,
-    private readonly wishEntity: WishEntity,
+    private readonly transactionPurchaseService: TransactionPurchaseService,
   ) {}
 
   public async getList(id: string | number): Promise<TransactionDocument[]> {
@@ -350,38 +349,35 @@ export class TransactionService {
   }
 
   async findPurchase(user: TgInitUser, filter: PurchaseFilter): Promise<TransactionDocument[]> {
-    const { wishId } = filter
-    const transactions = await this.transactionEntity.findAll(
-      {
-        userId: user?.id?.toString(),
-        wishId,
-        type: TransactionType.PURCHASE,
-        status: TransactionStatus.CONFIRMED,
-      },
-      false,
-    )
+    if (filter?.wishId) {
+      return this.transactionPurchaseService.findWishPurchase(user, filter)
+    }
 
-    return transactions
+    if (filter?.santaGameId) {
+      return this.transactionPurchaseService.findSecretSantaPurchase(user, filter)
+    }
+
+    throw new NotFoundException({
+      code: ERROR_CODES.transaction.codes.TRANSACTION_NOT_FOUND,
+      message: ERROR_CODES.transaction.messages.TRANSACTION_NOT_FOUND,
+    })
   }
 
   async purchase(user: TgInitUser, dto: Purchase): Promise<TransactionDocument> {
-    const logKey = `${getUniqueId()}-purchase`
+    const logKey = `${getUniqueId()}-purchase-${dto?.payload?.type}`
 
-    if (dto?.payload?.type !== TransactionPayloadType.SHOW_WISH_BOOKED_USER) {
+    if (
+      ![TransactionPayloadType.SHOW_WISH_BOOKED_USER, TransactionPayloadType.SHOW_SECRET_SANTA_USER].includes(
+        dto?.payload?.type,
+      )
+    ) {
       throw new BadRequestException({
         code: ERROR_CODES.transaction.codes.TRANSACTION_NOT_SUPPORTED_PURCHASE_TYPE,
         message: ERROR_CODES.transaction.messages.TRANSACTION_NOT_SUPPORTED_PURCHASE_TYPE,
       })
     }
 
-    const { amount, currency, payload, wishId } = dto
-
-    if (!wishId) {
-      throw new NotFoundException({
-        code: ERROR_CODES.wish.codes.WISH_NOT_FOUND,
-        message: ERROR_CODES.wish.codes.WISH_NOT_FOUND,
-      })
-    }
+    const { currency } = dto
 
     const isXtrCurrency = currency === 'XTR'
 
@@ -395,49 +391,12 @@ export class TransactionService {
     const balance = await this.balance({ id: Number(user?.id) })
     const balanceByCurrency = balance.find((item) => item?.currency === dto?.currency)
 
-    if (isXtrCurrency && Number(balanceByCurrency?.amount) < TRANSACTION_BOOKED_USERS_XTR_AMOUNT) {
-      throw new BadRequestException({
-        code: ERROR_CODES.transaction.codes.TRANSACTION_NOT_ENOUGH_BALANCE,
-        message: ERROR_CODES.transaction.messages.TRANSACTION_NOT_ENOUGH_BALANCE,
-      })
+    if (dto?.payload?.type === TransactionPayloadType.SHOW_WISH_BOOKED_USER) {
+      return this.transactionPurchaseService.purchaseWish(user, dto, balanceByCurrency, logKey)
     }
 
-    const wish = await this.wishEntity.get(wishId)
-
-    if (!wish) {
-      throw new NotFoundException({
-        code: ERROR_CODES.wish.codes.WISH_NOT_FOUND,
-        message: ERROR_CODES.wish.codes.WISH_NOT_FOUND,
-      })
-    }
-
-    try {
-      const transactionPayload = this.transactionEntity.getValidProperties(
-        {
-          userId: user?.id?.toString(),
-          type: TransactionType.PURCHASE,
-          status: TransactionStatus.CONFIRMED,
-          provider: TransactionProvider.INTERNAL,
-          payload: jsonStringify<TransactionPayload>(payload),
-          wishId,
-          amount,
-          currency,
-          refundExpiredAt: Timestamp.fromDate(time().toDate()),
-        },
-        false,
-        logKey,
-      )
-
-      const transaction = await this.transactionEntity.createOrUpdate(transactionPayload)
-
-      return transaction
-    } catch (error) {
-      this.logger.error(`Error with purchase transaction logKey=${logKey}`, error, {
-        userId: user?.id,
-        amount: dto?.amount,
-        currency: dto?.currency,
-        logKey,
-      })
+    if (dto?.payload?.type === TransactionPayloadType.SHOW_SECRET_SANTA_USER) {
+      return this.transactionPurchaseService.purchaseSecretSanta(user, dto, balanceByCurrency, logKey)
     }
   }
 

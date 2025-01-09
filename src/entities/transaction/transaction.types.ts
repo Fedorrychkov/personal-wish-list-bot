@@ -17,6 +17,7 @@ export enum TransactionProvider {
 export enum TransactionPayloadType {
   TRANSFER = 'transfer',
   SHOW_WISH_BOOKED_USER = 'show_wish_booked_user',
+  SHOW_SECRET_SANTA_USER = 'show_secret_santa_user',
 }
 
 export enum TransactionType {
@@ -53,5 +54,6 @@ export type TransactionFilter = {
   types?: TransactionType[]
   gameId?: string
   wishId?: string
+  santaGameId?: string
   status?: TransactionStatus
 }
