@@ -1,5 +1,7 @@
 import { WishDocument } from 'src/entities'
+import { MAIN_CALLBACK_DATA } from 'src/scenes/main/constants'
 import { WISH_CALLBACK_DATA } from 'src/scenes/wish/constants'
+import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram'
 
 import { KeyboardType } from './types'
 
@@ -18,14 +20,16 @@ export const getAnotherUserWishListById = (userId: string, username?: string) =>
 export const getMainKeyboards = (options?: KeyboardType) => {
   const { webAppUrl } = options || {}
 
-  const btns = [
+  const btns: InlineKeyboardButton[][] = [
     [{ text: 'Управление желаниями', callback_data: WISH_CALLBACK_DATA.openWishScene }],
     [{ text: 'Поделиться по ссылке', callback_data: WISH_CALLBACK_DATA.shareWishList }],
   ]
 
   if (webAppUrl) {
-    return [...btns, [getMainOpenWebAppButton(webAppUrl)]]
+    btns.push([getMainOpenWebAppButton(webAppUrl)])
   }
+
+  btns.push([{ text: 'Реферальная система', callback_data: MAIN_CALLBACK_DATA.refferalSystem }])
 
   return btns
 }

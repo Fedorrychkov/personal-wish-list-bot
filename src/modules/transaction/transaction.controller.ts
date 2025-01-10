@@ -10,7 +10,7 @@ import {
   TransactionResponse,
 } from 'src/entities'
 import { TgDataGuard } from 'src/guards'
-import { TgInitUser } from 'src/types'
+import { PaginationResponse, TgInitUser } from 'src/types'
 
 import { TransactionService } from './transaction.service'
 
@@ -20,10 +20,15 @@ export class TransactionController {
 
   @UseGuards(TgDataGuard)
   @Get('/list')
-  async list(@UserContext() user: TgInitUser): Promise<TransactionResponse[]> {
-    const transactions = await this.transactionService.getList(user?.id)
+  async list(
+    @UserContext() user: TgInitUser,
+    @Query('createdAt') createdAt?: string,
+  ): Promise<PaginationResponse<TransactionResponse>> {
+    const transactions = await this.transactionService.getList(user?.id, { createdAt })
 
-    return transactions.map((transaction) => this.transactionService.transform(transaction))
+    const response = transactions?.list?.map((transaction) => this.transactionService.transform(transaction))
+
+    return { list: response, total: transactions?.total }
   }
 
   @UseGuards(TgDataGuard)
@@ -54,6 +59,14 @@ export class TransactionController {
   @Get('/balance')
   async balance(@UserContext() user: TgInitUser): Promise<TransactionBalanceItem[]> {
     const balances = await this.transactionService.balance(user)
+
+    return balances
+  }
+
+  @UseGuards(TgDataGuard)
+  @Get('/balance/refferal')
+  async getRefferalBlockedBalance(@UserContext() user: TgInitUser): Promise<TransactionBalanceItem[]> {
+    const balances = await this.transactionService.getRefferalBlockedBalance(user)
 
     return balances
   }

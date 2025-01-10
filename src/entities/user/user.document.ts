@@ -18,6 +18,18 @@ export class UserDocument {
   isBot?: boolean | null
   phone?: string | null
   appOnboardingKey?: string
+  /**
+   * Хэш реферальной системы, может быть как внутренняя, так и внешняя
+   */
+  refferalHash?: string | null
+  /**
+   * ID пользователя, который пригласил текущего пользователя
+   */
+  refferrerUserId?: string | null
+  /**
+   * Комиссия реферальной системы за приглашенного пользователя
+   */
+  refferalCommission?: number | null
   role?: UserRole[] | null
   createdAt?: Timestamp | null
   updatedAt?: Timestamp | null

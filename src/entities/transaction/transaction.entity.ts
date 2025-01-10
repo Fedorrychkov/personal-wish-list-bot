@@ -2,6 +2,7 @@ import { CollectionReference, Timestamp } from '@google-cloud/firestore'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import firebase from 'firebase-admin'
 import { getUniqueId, jsonParse, time } from 'src/helpers'
+import { PaginationResponse } from 'src/types'
 
 import { TransactionPayload, TransactionResponse } from './transaction.api.types'
 import { TransactionDocument } from './transaction.document'
@@ -94,14 +95,46 @@ export class TransactionEntity {
     const list: TransactionDocument[] = []
     let query = this.findAllGenerator(filter)
 
-    if (withOrderBy) {
+    if (withOrderBy || filter?.createdAt) {
       query = query.orderBy('createdAt', 'desc')
+    }
+
+    if (filter?.limit) {
+      query = query.limit(filter?.limit)
     }
 
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))
 
     return list
+  }
+
+  async findAllWithPagination(
+    filter: TransactionFilter,
+    withOrderBy = true,
+  ): Promise<PaginationResponse<TransactionDocument>> {
+    const list: TransactionDocument[] = []
+    let query = this.findAllGenerator(filter)
+
+    if (withOrderBy) {
+      query = query.orderBy('createdAt', 'desc')
+    }
+
+    const totalSnapshot = await query.count().get()
+    const total = totalSnapshot.data().count
+
+    if (filter?.createdAt) {
+      query = query.startAfter(Timestamp.fromDate(time(filter?.createdAt).toDate()))
+    }
+
+    if (filter?.limit) {
+      query = query.limit(filter?.limit)
+    }
+
+    const snapshot = await query.get()
+    snapshot.forEach((doc) => list.push(doc.data()))
+
+    return { list, total }
   }
 
   getValidProperties(document: { id?: string } & Omit<TransactionDocument, 'id'>, isUpdate?: boolean, logKey?: string) {

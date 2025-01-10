@@ -25,6 +25,8 @@ export const START_PAYLOAD_KEYS = {
   shareByUserName: 'share_by_username_',
   shareById: 'share_by_id_',
   santaGame: 'santa_',
+  refferalSystem: '_irf_',
+  tgReferralSystem: '_tgr_',
 }
 
 export const MAIN_CALLBACK_DATA = {
@@ -41,6 +43,7 @@ export const MAIN_CALLBACK_DATA = {
   supportWithXtr: 'support_with_xtr',
   userTopupWithXtr: 'user_topup_with_xtr',
   refundTransaction: 'refund_transaction',
+  refferalSystem: 'refferal_system',
 }
 
 export const NEWS_SCENE_NAME = 'newsScene'

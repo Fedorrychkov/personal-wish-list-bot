@@ -5,3 +5,8 @@ export type ValuesMap<T extends AnyString, K> = {
 }
 
 export type AnyCurrency = 'XTR' | AnyString
+
+export type PaginationResponse<T> = {
+  list: T[]
+  total: number
+}

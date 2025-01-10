@@ -4,6 +4,9 @@ import {
   getMainOpenWebAppButton,
   TRANSACTION_DEPOSIT_COMISSION,
   TRANSACTION_DEPOSIT_COMISSION_NUMBER,
+  TRANSACTION_NEW_USER_REFFERER_XTR_AMOUNT,
+  TRANSACTION_NEW_USER_XTR_AMOUNT,
+  TRANSACTION_USER_REFFERER_XTR_COMISSION_NUMBER,
   TRANSACTION_WITHDRAW_COMISSION,
   TRANSACTION_WITHDRAW_COMISSION_NUMBER,
 } from 'src/constants'
@@ -17,17 +20,20 @@ import {
   transactionCurrencyLabels,
   TransactionDocument,
   TransactionEntity,
+  TransactionFilter,
   TransactionPayload,
   TransactionPayloadType,
   TransactionProvider,
   TransactionResponse,
   TransactionStatus,
   TransactionType,
+  UserDocument,
+  UserEntity,
 } from 'src/entities'
 import { ERROR_CODES } from 'src/errors'
 import { getUniqueId, jsonStringify, time, truncate } from 'src/helpers'
 import { TelegrafCustomService } from 'src/services'
-import { TgInitUser } from 'src/types'
+import { PaginationResponse, TgInitUser } from 'src/types'
 
 import { CustomConfigService } from '../config'
 import { TransactionPurchaseService } from './transaction.purchase.service'
@@ -38,13 +44,24 @@ export class TransactionService {
 
   constructor(
     private readonly transactionEntity: TransactionEntity,
+    private readonly userEntity: UserEntity,
     private readonly telegrafCustomService: TelegrafCustomService,
     private readonly customConfigService: CustomConfigService,
     private readonly transactionPurchaseService: TransactionPurchaseService,
   ) {}
 
-  public async getList(id: string | number): Promise<TransactionDocument[]> {
-    const response = await this.transactionEntity.findAll({ userId: id?.toString() })
+  public async getList(
+    id: string | number,
+    filter: TransactionFilter,
+  ): Promise<PaginationResponse<TransactionDocument>> {
+    const response = await this.transactionEntity.findAllWithPagination(
+      {
+        ...filter,
+        userId: id?.toString(),
+        limit: 10,
+      },
+      true,
+    )
 
     return response
   }
@@ -104,11 +121,12 @@ export class TransactionService {
     }
   }
 
-  public async balance(user: TgInitUser): Promise<TransactionBalanceItem[]> {
+  public async getRefferalBlockedBalance(user: TgInitUser): Promise<TransactionBalanceItem[]> {
     const transactions = await this.transactionEntity.findAll(
       {
         userId: user?.id?.toString(),
-        types: [TransactionType.USER_TOPUP, TransactionType.USER_WITHDRAW, TransactionType.PURCHASE],
+        types: [TransactionType.REFFERAL],
+        status: TransactionStatus.CONFIRMED,
       },
       false,
     )
@@ -118,11 +136,78 @@ export class TransactionService {
     }
 
     const balances: TransactionBalanceItem[] = transactions.reduce((acc: TransactionBalanceItem[], transaction) => {
-      const isTopup = transaction?.type === TransactionType.USER_TOPUP
+      const isTopup = [TransactionType.REFFERAL].includes(transaction?.type)
+
+      const isAvailableTopup = isTopup && [TransactionStatus.CONFIRMED].includes(transaction?.status)
+
+      const balanceCurrency = transaction?.currency
+      const balanceAmount = transaction?.amount || '0'
+
+      const isAvailableAfterRefundableDateLimit = transaction?.refundExpiredAt
+        ? time(transaction?.refundExpiredAt?.toDate()).isAfter(time())
+        : true
+
+      if (isAvailableTopup && !isAvailableAfterRefundableDateLimit && transaction?.type === TransactionType.REFFERAL) {
+        return acc
+      }
+
+      /**
+       * На первом шаге формируем первую запись баланса, или оставляем пустой массив
+       */
+      if (!acc?.length && isAvailableTopup) {
+        acc.push({ amount: balanceAmount, currency: balanceCurrency })
+
+        return acc
+      }
+
+      const balanceByCurrency = acc.find((item) => item?.currency === balanceCurrency)
+      const filteredBalances = acc.filter((item) => item?.currency !== balanceCurrency)
+
+      // TODO: нужно REFERRAL проверять на срок refundExpiredAt, показываем на балансе, только если срок возврата истек
+
+      if (isAvailableTopup) {
+        const newAcc = [...(filteredBalances || [])]
+
+        newAcc.push({
+          amount: String(Number(balanceByCurrency.amount) + Number(balanceAmount)),
+          currency: balanceByCurrency.currency,
+        })
+
+        return newAcc
+      }
+
+      return acc
+    }, [])
+
+    return balances
+  }
+
+  public async balance(user: TgInitUser): Promise<TransactionBalanceItem[]> {
+    const transactions = await this.transactionEntity.findAll(
+      {
+        userId: user?.id?.toString(),
+        types: [
+          TransactionType.USER_TOPUP,
+          TransactionType.USER_WITHDRAW,
+          TransactionType.PURCHASE,
+          TransactionType.BONUS,
+          TransactionType.REFFERAL,
+        ],
+      },
+      false,
+    )
+
+    if (!transactions.length) {
+      return []
+    }
+
+    const balances: TransactionBalanceItem[] = transactions.reduce((acc: TransactionBalanceItem[], transaction) => {
+      const isTopup = [TransactionType.USER_TOPUP, TransactionType.BONUS, TransactionType.REFFERAL].includes(
+        transaction?.type,
+      )
       const isWithdraw = [TransactionType.USER_WITHDRAW, TransactionType.PURCHASE].includes(transaction?.type)
 
-      const isAvailableTopup =
-        isTopup && [TransactionStatus.CONFIRMED, TransactionStatus.PAID].includes(transaction?.status)
+      const isAvailableTopup = isTopup && [TransactionStatus.CONFIRMED].includes(transaction?.status)
       const isAvailableWithdraw =
         isWithdraw &&
         [
@@ -134,6 +219,14 @@ export class TransactionService {
 
       const balanceCurrency = transaction?.currency
       const balanceAmount = transaction?.amount || '0'
+
+      const isAvailableAfterRefundableDateLimit = transaction?.refundExpiredAt
+        ? time().isAfter(transaction?.refundExpiredAt?.toDate())
+        : true
+
+      if (isAvailableTopup && !isAvailableAfterRefundableDateLimit && transaction?.type === TransactionType.REFFERAL) {
+        return acc
+      }
 
       /**
        * На первом шаге формируем первую запись баланса, или оставляем пустой массив
@@ -194,7 +287,8 @@ export class TransactionService {
       ? String(Number(dto.amount || 0) * TRANSACTION_DEPOSIT_COMISSION_NUMBER)
       : '0'
 
-    const payload = this.transactionEntity.getValidProperties(
+    const depositTransactionId = getUniqueId()
+    let payload = this.transactionEntity.getValidProperties(
       {
         userId: '',
         status: TransactionStatus.CREATED,
@@ -204,6 +298,7 @@ export class TransactionService {
          * Need to rewrite important info
          */
         ...dto,
+        id: depositTransactionId,
         type: dto?.type || TransactionType.SUPPORT,
         amount,
         currency,
@@ -214,6 +309,57 @@ export class TransactionService {
       false,
       logKey,
     )
+
+    const user = await this.userEntity.get(payload?.userId)
+
+    if (!!user?.refferrerUserId && isComissionType) {
+      this.logger.log('User has refferrerUserId', {
+        userId: user?.id,
+        refferrerUserId: user?.refferrerUserId,
+      })
+
+      const reffererUser = await this.userEntity.get(user?.refferrerUserId)
+
+      if (reffererUser) {
+        const reffererBonusTransactionId = getUniqueId()
+
+        payload = {
+          ...payload,
+          payload: jsonStringify<TransactionPayload>({
+            type: TransactionPayloadType.WITH_REFFERAL_COMISSION,
+            message: 'С учетом комиссии реферера',
+            userId: user?.refferrerUserId,
+          }),
+          childrenTransactionId: reffererBonusTransactionId,
+        }
+
+        const amount = String(Number(dto.amount || 0) * TRANSACTION_USER_REFFERER_XTR_COMISSION_NUMBER)
+        const currency = dto.currency
+
+        const reffererBonusPayload = this.transactionEntity.getValidProperties(
+          {
+            id: reffererBonusTransactionId,
+            userId: reffererUser?.id,
+            parentTransactionId: depositTransactionId,
+            refundExpiredAt: Timestamp.fromDate(time().add(21, 'day').add(1, 'hour').toDate()),
+            status: TransactionStatus.CONFIRMED,
+            provider: TransactionProvider.INTERNAL,
+            type: TransactionType.REFFERAL,
+            amount,
+            currency,
+            payload: jsonStringify<TransactionPayload>({
+              type: TransactionPayloadType.REFFERAL_BONUS,
+              message: 'Реферальный бонус',
+              userId: user?.id,
+            }),
+          },
+          false,
+          logKey,
+        )
+
+        this.transactionEntity.createOrUpdate(reffererBonusPayload)
+      }
+    }
 
     return this.transactionEntity.createOrUpdate(payload)
   }
@@ -342,6 +488,35 @@ export class TransactionService {
         refundedAt: Timestamp.fromDate(time().toDate()),
       })
 
+      const hasChildrenTransaction = refundableInfo?.childrenTransactionId
+
+      if (hasChildrenTransaction) {
+        const childrenTransaction = await this.transactionEntity.get(refundableInfo?.childrenTransactionId)
+
+        if (!childrenTransaction) {
+          this.logger.error('Children transaction not found', {
+            childrenTransactionId: refundableInfo?.childrenTransactionId,
+          })
+        } else if (
+          childrenTransaction?.status === TransactionStatus.CONFIRMED &&
+          childrenTransaction?.type === TransactionType.REFFERAL
+        ) {
+          this.logger.log('Refund children transaction', {
+            childrenTransactionId: refundableInfo?.childrenTransactionId,
+            userId: childrenTransaction?.userId,
+            amount: childrenTransaction?.amount,
+            currency: childrenTransaction?.currency,
+            status: childrenTransaction?.status,
+            type: childrenTransaction?.type,
+          })
+
+          await this.update(refundableInfo?.childrenTransactionId, childrenTransaction, {
+            status: TransactionStatus.REFUNDED,
+            refundedAt: Timestamp.fromDate(time().toDate()),
+          })
+        }
+      }
+
       return refundedTransaction
     } catch (error) {
       throw error
@@ -400,6 +575,71 @@ export class TransactionService {
     }
   }
 
+  async sendRefferalSystemBonus(referrerUser: UserDocument, invitedUser: UserDocument) {
+    const logKey = `${getUniqueId()}-sendRefferalSystemBonus`
+
+    try {
+      const targetTransactionId = getUniqueId()
+
+      const refundExpiredAt = Timestamp.fromDate(time().toDate())
+
+      const userReffererTopupTransaction = this.transactionEntity.getValidProperties(
+        {
+          userId: referrerUser?.id,
+          type: TransactionType.BONUS,
+          amount: String(TRANSACTION_NEW_USER_REFFERER_XTR_AMOUNT),
+          currency: 'XTR',
+          provider: TransactionProvider.INTERNAL,
+          status: TransactionStatus.CONFIRMED,
+          childrenTransactionId: targetTransactionId,
+          refundExpiredAt,
+          payload: jsonStringify<TransactionPayload>({
+            message: 'Бонус за приглашение в бот',
+            type: TransactionPayloadType.INVITED_NEW_USER,
+            userId: invitedUser?.id,
+          }),
+        },
+        false,
+        logKey,
+      )
+
+      const userInvitedTopupTransaction = this.transactionEntity.getValidProperties(
+        {
+          id: targetTransactionId,
+          userId: invitedUser?.id,
+          type: TransactionType.BONUS,
+          /**
+           * Начисляем сумму с учетом комиссии, так как мы именно столько начисляем пользователю
+           */
+          amount: String(TRANSACTION_NEW_USER_XTR_AMOUNT),
+          currency: 'XTR',
+          provider: TransactionProvider.INTERNAL,
+          status: TransactionStatus.CONFIRMED,
+          parentTransactionId: userReffererTopupTransaction?.id,
+          refundExpiredAt,
+          payload: jsonStringify<TransactionPayload>({
+            message: 'Бонус за вступление в бот',
+            type: TransactionPayloadType.INVITEE_BONUS,
+            userId: referrerUser?.id,
+          }),
+        },
+        false,
+        logKey,
+      )
+
+      await this.transactionEntity.createOrUpdate(userReffererTopupTransaction)
+      await this.transactionEntity.createOrUpdate(userInvitedTopupTransaction)
+    } catch (error) {
+      this.logger.error(`Error with sendRefferalSystemBonus transaction logKey=${logKey}`, error, {
+        referrerUserId: referrerUser?.id,
+        invitedUserId: invitedUser?.id,
+        logKey,
+      })
+
+      throw error
+    }
+  }
+
   async transfer(user: TgInitUser, dto: BalanceTransfer, withComission = true): Promise<TransactionDocument> {
     const logKey = `${getUniqueId()}-transfer`
 
@@ -429,7 +669,7 @@ export class TransactionService {
         : dto.amount
       const currency = dto.currency
       const comissionAmount = isComissionType
-        ? String(Number(dto.amount || 0) * TRANSACTION_DEPOSIT_COMISSION_NUMBER)
+        ? String(Number(dto.amount || 0) * TRANSACTION_WITHDRAW_COMISSION_NUMBER)
         : '0'
 
       const targetTransactionId = getUniqueId()

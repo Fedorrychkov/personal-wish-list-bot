@@ -2,7 +2,13 @@ import { Timestamp } from '@google-cloud/firestore'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import * as fs from 'fs'
 import { Action, Command, Ctx, Help, On, Start, Update } from 'nestjs-telegraf'
-import { TRANSACTION_DEPOSIT_COMISSION, TRANSACTION_DEPOSIT_COMISSION_NUMBER } from 'src/constants'
+import {
+  TRANSACTION_DEPOSIT_COMISSION,
+  TRANSACTION_DEPOSIT_COMISSION_NUMBER,
+  TRANSACTION_NEW_USER_REFFERER_XTR_AMOUNT,
+  TRANSACTION_NEW_USER_XTR_AMOUNT,
+  TRANSACTION_USER_REFFERER_XTR_COMISSION,
+} from 'src/constants'
 import {
   getMainKeyboards,
   getMainOpenWebAppButton,
@@ -11,6 +17,7 @@ import {
 } from 'src/constants/keyboards'
 import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
 import {
+  transactionCurrencyLabels,
   TransactionProvider,
   TransactionStatus,
   TransactionType,
@@ -111,7 +118,7 @@ export class MainSceneService {
     }
   }
 
-  private async checShareGameAndUse(startPayload: string, userContext: UserDocument, ctx: SceneContext) {
+  private async checkShareGameAndUse(startPayload: string, userContext: UserDocument, ctx: SceneContext) {
     const isSantaGame = startPayload.includes(START_PAYLOAD_KEYS.santaGame)
 
     if (isSantaGame) {
@@ -162,6 +169,69 @@ export class MainSceneService {
     }
 
     return undefined
+  }
+
+  private async checkReferralSystem(startPayload: string, userContext: UserDocument, ctx: SceneContext) {
+    const user = await this.userEntity.get(userContext?.id)
+
+    if (user?.refferalHash) {
+      return
+    }
+
+    const isTgReferralSystem = startPayload.includes(START_PAYLOAD_KEYS.tgReferralSystem)
+
+    if (isTgReferralSystem) {
+      const referralHash = startPayload
+
+      const payload = this.userEntity.getValidProperties(
+        {
+          ...userContext,
+          refferalHash: referralHash,
+        },
+        true,
+      )
+
+      await this.userEntity.createOrUpdate(payload)
+
+      return
+    }
+
+    const isInternalReferralSystem = startPayload.includes(START_PAYLOAD_KEYS.refferalSystem)
+
+    if (isInternalReferralSystem) {
+      const referralHash = startPayload
+      const referralUserHash = startPayload?.replace(START_PAYLOAD_KEYS.refferalSystem, '')
+
+      const referrerUserId = Buffer.from(referralUserHash, 'base64').toString('utf-8')
+
+      const referrerUser = await this.userEntity.get(referrerUserId)
+
+      if (!referrerUser || referrerUser?.id === userContext?.id) {
+        return
+      }
+
+      const payload = this.userEntity.getValidProperties({
+        ...userContext,
+        refferalHash: referralHash,
+        refferrerUserId: referrerUser?.id,
+        refferalCommission: TRANSACTION_USER_REFFERER_XTR_COMISSION,
+      })
+
+      await this.userEntity.createOrUpdate(payload)
+
+      await this.transactionService.sendRefferalSystemBonus(referrerUser, userContext).catch(() => {
+        this.logger.error('Error with sendRefferalSystemBonus', {
+          referrerUserId: referrerUser?.id,
+          invitedUserId: userContext?.id,
+        })
+
+        ctx.reply('Произошла ошибка при начислении бонусов за вступление в бот, обратитесь к разработчику бота')
+      })
+
+      return
+    }
+
+    return
   }
 
   private async deprecatedSharePayload(startPayload: string, userContext: UserDocument) {
@@ -300,7 +370,8 @@ export class MainSceneService {
         return
       }
 
-      await this.checShareGameAndUse(startPayload, userContext, ctx)
+      await this.checkShareGameAndUse(startPayload, userContext, ctx)
+      await this.checkReferralSystem(startPayload, userContext, ctx)
 
       return
     }
@@ -328,7 +399,8 @@ export class MainSceneService {
       return
     }
 
-    await this.checShareGameAndUse(startPayload, userContext, ctx)
+    await this.checkShareGameAndUse(startPayload, userContext, ctx)
+    await this.checkReferralSystem(startPayload, userContext, ctx)
   }
 
   @Command(MAIN_CALLBACK_DATA.menu)
@@ -357,6 +429,48 @@ export class MainSceneService {
   @Action(WISH_CALLBACK_DATA.openWishScene)
   async openWishScene(@Ctx() ctx: SceneContext) {
     await this.sharedService.enterWishScene(ctx)
+  }
+
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  @Command(MAIN_CALLBACK_DATA.refferalSystem)
+  @Action(MAIN_CALLBACK_DATA.refferalSystem)
+  async showRefferalSystem(@Ctx() ctx: SceneContext) {
+    await ctx.reply(
+      `
+<b>Реферальная система</b>
+
+Вы можете зарабатывать внутри бота, приглашая новых пользователей.
+
+<b>Условия реферальной системы</b>:
+- Если кто-то запустит бота по вашей ссылке, вы получите ${TRANSACTION_NEW_USER_REFFERER_XTR_AMOUNT} ${
+        transactionCurrencyLabels['XTR']
+      } за каждого пользователя
+- При пополнении баланса пользователем, вы получите ${TRANSACTION_USER_REFFERER_XTR_COMISSION}% от суммы пополнения, однако, если пользователь отменит оплату, ваша комиссия так же будет отменена
+- Приглашенный пользователь получает на баланс ${TRANSACTION_NEW_USER_XTR_AMOUNT} ${transactionCurrencyLabels['XTR']}
+
+<b>Вывод средств</b>:
+- На данный момент, автоматический вывод средств не поддерживается, однако, вы можете вывести средства вручную, обратившись к разработчику бота
+- Так как депозиты можно возвращать в течении <b>21 дня</b>, то и вывод реферальных средств можно будет осуществить лишь после прохождения этого срока
+
+<i>Условия реферальной системы могут быть изменены в любой момент, без предварительного уведомления. Следите за обновлениями в боте.</i>
+
+<i>Так же прорабатывается реферальный заработок при выполнении доп условий внутри бота.</i>
+
+<b>Альтернативная реферальная система</b>
+Бот так же участвует в реферальной системе Telegram, которая позволяет зарабатывать на пополнениях пользователей звездами в любом виде.
+
+<b>Ваша реферальная ссылка на бот</b>: https://t.me/${this.customConfigService.tgBotUsername}?start=${
+        START_PAYLOAD_KEYS.refferalSystem
+      }${Buffer.from(ctx?.from?.id?.toString() || '').toString('base64')}
+`,
+      {
+        reply_markup: {
+          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+        },
+        parse_mode: 'HTML',
+      },
+    )
   }
 
   @AvailableChatTypes('private')
