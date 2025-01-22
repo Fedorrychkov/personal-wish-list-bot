@@ -1,5 +1,6 @@
 import { WishDocument } from 'src/entities'
-import { MAIN_CALLBACK_DATA } from 'src/scenes/main/constants'
+import { jsonStringify } from 'src/helpers'
+import { MAIN_CALLBACK_DATA, WALLET_CALLBACK_DATA } from 'src/scenes/main/constants'
 import { WISH_CALLBACK_DATA } from 'src/scenes/wish/constants'
 import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram'
 
@@ -30,6 +31,7 @@ export const getMainKeyboards = (options?: KeyboardType) => {
   }
 
   btns.push([{ text: 'Реферальная система', callback_data: MAIN_CALLBACK_DATA.refferalSystem }])
+  btns.push([{ text: 'Управление кошельками', callback_data: WALLET_CALLBACK_DATA.wallets }])
 
   return btns
 }
@@ -201,3 +203,24 @@ export const getSharedWishItemKeyboard = ({
 
   return [defaultCommands]
 }
+
+export const showAvailableWalletsBtn = (text = 'Список доступных кошельков') => ({
+  text,
+  callback_data: jsonStringify({ method: WALLET_CALLBACK_DATA.walletList }),
+})
+
+export const showConnectedWalletBtn = {
+  text: 'Мой кошелек',
+  callback_data: jsonStringify({ method: WALLET_CALLBACK_DATA.connectedWallet }),
+}
+
+export const disconnectWalletBtn = {
+  text: 'Отключить кошелек',
+  callback_data: jsonStringify({ method: WALLET_CALLBACK_DATA.disconnectWallet }),
+}
+
+export const getWalletMainKeyboard = () => [
+  [showAvailableWalletsBtn()],
+  [showConnectedWalletBtn],
+  [{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }],
+]

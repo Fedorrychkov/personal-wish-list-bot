@@ -17,6 +17,7 @@ export class TransactionDocument {
   status: TransactionStatus
   type: TransactionType
   provider: TransactionProvider
+  blockchain?: string | null
   amount: string
   currency: AnyCurrency
   providerInvoiceId?: string

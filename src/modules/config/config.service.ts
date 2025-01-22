@@ -7,6 +7,7 @@ export class CustomConfigService {
   public apiUrl: string
   public tgToken: string
   public tgBotUsername: string
+  public testnetEnabled: boolean
 
   constructor(
     @Inject(ConfigService)
@@ -16,5 +17,6 @@ export class CustomConfigService {
     this.apiUrl = this.configService.get<string>('API_URL')
     this.tgToken = this.configService.get<string>('TELEGRAM_BOT_KEY')
     this.tgBotUsername = this.configService.get<string>('TG_BOT_USERNAME')
+    this.testnetEnabled = this.configService.get<string>('TESTNED_ENABLED') === '1'
   }
 }

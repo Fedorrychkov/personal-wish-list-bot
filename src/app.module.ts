@@ -17,10 +17,12 @@ import {
   UserModule,
 } from './modules'
 import { GameModule } from './modules/games'
+import { PaymentProvidersModule } from './modules/payment-providers'
+import { WalletModule } from './modules/wallet'
 import { MainSceneModule, WishSceneModule } from './scenes'
 import { FavoriteSceneModule } from './scenes/favorite/favorite.scene.module'
 import { GamesSceneModule } from './scenes/games/games.scene.module'
-import { FirestoreModule } from './services'
+import { FirestoreModule, TonConnectModule } from './services'
 import { BucketModule } from './services/bucket'
 
 const session = new LocalSession()
@@ -74,6 +76,9 @@ const session = new LocalSession()
     GameModule,
     GamesSceneModule,
     TransactionModule,
+    TonConnectModule.forRoot(),
+    WalletModule,
+    PaymentProvidersModule,
   ],
   controllers: [],
   providers: [],

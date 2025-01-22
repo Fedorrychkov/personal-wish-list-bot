@@ -37,13 +37,24 @@ export const MAIN_CALLBACK_DATA = {
   updateUserRoleToUser: 'update_user_role_to_user',
   updateWishStatusToActive: 'update_wish_status_to_active',
   sendNewsNotificationToAllUsers: 'send_news_notification_to_all_users',
+  refferalSystem: 'refferal_system',
+}
+
+export const PAYMENT_CALLBACK_DATA = {
   paySupport: 'paysupport',
   supportXtr: 'support_xtr',
   userTopupXtr: 'user_topup_xtr',
   supportWithXtr: 'support_with_xtr',
   userTopupWithXtr: 'user_topup_with_xtr',
   refundTransaction: 'refund_transaction',
-  refferalSystem: 'refferal_system',
+}
+
+export const WALLET_CALLBACK_DATA = {
+  connectWallet: 'connect_new_wallet',
+  walletList: 'wallets_list',
+  wallets: 'menuWallets',
+  connectedWallet: 'my_connected_wallet',
+  disconnectWallet: 'disconnect_my_wallet',
 }
 
 export const NEWS_SCENE_NAME = 'newsScene'

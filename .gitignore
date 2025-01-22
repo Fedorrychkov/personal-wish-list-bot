@@ -40,3 +40,5 @@ service-account*.json
 .firebaserc
 
 sessions.json
+
+qrcodes/*
