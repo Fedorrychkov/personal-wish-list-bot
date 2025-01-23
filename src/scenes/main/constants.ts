@@ -41,11 +41,18 @@ export const MAIN_CALLBACK_DATA = {
 }
 
 export const PAYMENT_CALLBACK_DATA = {
+  paymentMenu: 'payment_menu',
   paySupport: 'paysupport',
+  donates: 'donates',
+  topupBalance: 'topup_balance',
   supportXtr: 'support_xtr',
+  supportTon: 'support_ton',
   userTopupXtr: 'user_topup_xtr',
+  userTopupTon: 'user_topup_ton',
   supportWithXtr: 'support_with_xtr',
+  supportWithTon: 'support_with_ton',
   userTopupWithXtr: 'user_topup_with_xtr',
+  userTopupWithTon: 'user_topup_with_ton',
   refundTransaction: 'refund_transaction',
 }
 

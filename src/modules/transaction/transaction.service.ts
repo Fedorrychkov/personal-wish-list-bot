@@ -241,7 +241,10 @@ export class TransactionService {
         return acc
       }
 
-      const balanceByCurrency = acc.find((item) => item?.currency === balanceCurrency)
+      const balanceByCurrency = acc.find((item) => item?.currency === balanceCurrency) || {
+        amount: '0',
+        currency: balanceCurrency,
+      }
       const filteredBalances = acc.filter((item) => item?.currency !== balanceCurrency)
 
       if (isAvailableTopup || isAvailableWithdraw) {
@@ -250,15 +253,15 @@ export class TransactionService {
         newAcc.push(
           isAvailableTopup
             ? {
-                amount: String(Number(balanceByCurrency.amount) + Number(balanceAmount)),
+                amount: String(Number(balanceByCurrency?.amount || 0) + Number(balanceAmount || 0)),
                 currency: balanceByCurrency.currency,
               }
             : {
                 /**
                  * Для вывода, мы делаем сумму позитивной и отнимаем от нее сумму из транзакции вывода и снова делаем отрицательной
                  */
-                amount: String(Number(balanceByCurrency.amount) - Number(balanceAmount)),
-                currency: balanceByCurrency.currency,
+                amount: String(Number(balanceByCurrency?.amount || 0) - Number(balanceAmount || 0)),
+                currency: balanceByCurrency.currency || '',
               },
         )
 
@@ -275,7 +278,7 @@ export class TransactionService {
     dto: Partial<TransactionDocument>,
     withComission = true,
   ): Promise<TransactionDocument> {
-    const logKey = `${getUniqueId()}-createWithPartialDto}`
+    const logKey = `${getUniqueId()}-createWithPartialDto`
     const isComissionType = withComission && [TransactionType.USER_TOPUP].includes(dto?.type)
 
     const comissionPercent = isComissionType ? TRANSACTION_DEPOSIT_COMISSION : 0
@@ -382,6 +385,9 @@ export class TransactionService {
          * Need to rewrite important info
          */
         ...dto,
+        statusMessage: transaction?.statusMessage
+          ? `${transaction?.statusMessage} => ${dto?.statusMessage || ''}`
+          : dto?.statusMessage,
       },
       true,
       logKey,

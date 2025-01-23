@@ -389,11 +389,9 @@ export class MainSceneService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async menu(@Ctx() ctx: SceneContext) {
-    await ctx.reply('<b>Доступные команды</b>', {
-      reply_markup: {
-        inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
-      },
-      parse_mode: 'HTML',
+    await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+      message: '<b>Доступные команды</b>',
+      keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
     })
   }
 

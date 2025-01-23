@@ -12,13 +12,18 @@ import { WalletService } from 'src/modules/wallet'
 import { TonConnectWallets } from 'src/services'
 import { SceneContext } from 'telegraf/typings/scenes'
 
-import { WALLET_CALLBACK_DATA } from './constants'
+import { SharedService } from '../shared'
+import { MAIN_CALLBACK_DATA, WALLET_CALLBACK_DATA } from './constants'
 
 @Update()
 @Injectable()
 export class MainWalletService {
   private logger = new Logger(MainWalletService.name)
-  constructor(private readonly walletService: WalletService, private readonly tonConnectWallets: TonConnectWallets) {}
+  constructor(
+    private readonly walletService: WalletService,
+    private readonly tonConnectWallets: TonConnectWallets,
+    private readonly sharedService: SharedService,
+  ) {}
 
   private async editMedia(ctx: SceneContext, messageId: number, chatId: number, link: string, caption?: string) {
     const fileName = 'QR-code-' + Math.round(Math.random() * 10000000000)
@@ -65,36 +70,11 @@ export class MainWalletService {
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async connectedWallet(@Ctx() ctx: SceneContext) {
     const handleShowMessage = async (message: string, isError = false) => {
-      const isCaption = !!ctx.callbackQuery?.message && !!(ctx.callbackQuery?.message as any).photo?.length
-
-      const keyboard = isError
-        ? [[showAvailableWalletsBtn()], [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }]]
-        : [[disconnectWalletBtn], [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }]]
-
-      if (!isCaption && !!ctx.callbackQuery?.message) {
-        await ctx.editMessageText(message, {
-          reply_markup: {
-            inline_keyboard: keyboard,
-          },
-        })
-
-        return
-      }
-
-      if (isCaption && !!ctx.callbackQuery?.message) {
-        await ctx.editMessageCaption(message)
-
-        await ctx.editMessageReplyMarkup({
-          inline_keyboard: keyboard,
-        })
-
-        return
-      }
-
-      await ctx.reply(message, {
-        reply_markup: {
-          inline_keyboard: keyboard,
-        },
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message,
+        keyboard: isError
+          ? [[showAvailableWalletsBtn()], [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }]]
+          : [[disconnectWalletBtn], [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }]],
       })
     }
 
@@ -131,52 +111,31 @@ export class MainWalletService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async disconnectWallet(@Ctx() ctx: SceneContext) {
+    await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+      message: 'Пожалуйста, дождитесь загрузки, если бот не ответил в течении 5 минут, обратитесь в поддержку...',
+      keyboard: [[{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }]],
+    })
+
     const isConnected = await this.checkConnectedWallet(ctx, false)
 
     if (!isConnected) {
-      await ctx.reply('У вас нет подключенного кошелька', {
-        reply_markup: {
-          inline_keyboard: [[{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }]],
-        },
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message: 'У вас нет подключенного кошелька',
+        keyboard: [[{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }]],
       })
 
       return
     }
 
     const handleShowMessage = async (message: string, isError = false) => {
-      const isCaption = !!ctx.callbackQuery?.message && !!(ctx.callbackQuery?.message as any).photo?.length
-
-      const keyboard = isError
-        ? [
-            [showAvailableWalletsBtn('Подключить другой кошелек')],
-            [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }],
-          ]
-        : [[showAvailableWalletsBtn()], [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }]]
-
-      if (!isCaption && !!ctx.callbackQuery?.message) {
-        await ctx.editMessageText(message, {
-          reply_markup: {
-            inline_keyboard: keyboard,
-          },
-        })
-
-        return
-      }
-
-      if (isCaption && !!ctx.callbackQuery?.message) {
-        await ctx.editMessageCaption(message)
-
-        await ctx.editMessageReplyMarkup({
-          inline_keyboard: keyboard,
-        })
-
-        return
-      }
-
-      await ctx.reply(message, {
-        reply_markup: {
-          inline_keyboard: keyboard,
-        },
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message,
+        keyboard: isError
+          ? [
+              [showAvailableWalletsBtn('Подключить другой кошелек')],
+              [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }],
+            ]
+          : [[showAvailableWalletsBtn()], [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }]],
       })
     }
 
@@ -206,17 +165,13 @@ export class MainWalletService {
     const { isError, walletName, address } = await this.walletService.showConnectedWallet(ctx.chat.id)
 
     if (!isError && throwError) {
-      await ctx.reply(
-        `У вас уже подключен ${walletName}\nС адресом: ${address}\nЧтобы подключить новый кошелек, отключите старый`,
-        {
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: 'Отключить кошелек', callback_data: WALLET_CALLBACK_DATA.disconnectWallet }],
-              [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }],
-            ],
-          },
-        },
-      )
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message: `У вас уже подключен ${walletName}\nС адресом: ${address}\nЧтобы подключить новый кошелек, отключите старый`,
+        keyboard: [
+          [{ text: 'Отключить кошелек', callback_data: WALLET_CALLBACK_DATA.disconnectWallet }],
+          [{ text: 'Назад', callback_data: WALLET_CALLBACK_DATA.wallets }],
+        ],
+      })
 
       return true
     }
@@ -232,6 +187,11 @@ export class MainWalletService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async connectWallet(@Ctx() ctx: SceneContext) {
+    await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+      message: 'Пожалуйста, дождитесь загрузки, если бот не ответил в течении 5 минут, обратитесь в поддержку...',
+      keyboard: [[{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }]],
+    })
+
     const isConnected = await this.checkConnectedWallet(ctx)
 
     if (isConnected) {
@@ -250,15 +210,17 @@ export class MainWalletService {
       const walletName =
         (await this.tonConnectWallets.getWalletInfo(wallet.device.appName))?.name || wallet.device.appName
 
-      await ctx.reply(`Кошелек ${walletName} подключен!`, {
-        reply_markup: {
-          inline_keyboard: getWalletMainKeyboard(),
-        },
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message: `Кошелек ${walletName} подключен!`,
+        keyboard: getWalletMainKeyboard(),
       })
     }
 
     const errorHandler = async (error: Error) => {
-      await ctx.reply(`Произошла ошибка при подключении кошелька: ${error.message}`)
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message: `Произошла ошибка при подключении кошелька: ${error.message}`,
+        keyboard: [[{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }]],
+      })
     }
 
     const { link } = await this.walletService.tryToConnectToWallet(ctx.chat.id, command.data, handler, errorHandler)
@@ -291,6 +253,11 @@ export class MainWalletService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async walletList(@Ctx() ctx: SceneContext) {
+    await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+      message: 'Пожалуйста, дождитесь загрузки, если бот не ответил в течении 5 минут, обратитесь в поддержку...',
+      keyboard: [[{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }]],
+    })
+
     const isConnected = await this.checkConnectedWallet(ctx)
 
     if (isConnected) {
@@ -305,15 +272,17 @@ export class MainWalletService {
       const walletName =
         (await this.tonConnectWallets.getWalletInfo(wallet.device.appName))?.name || wallet.device.appName
 
-      await ctx.reply(`Кошелек ${walletName} подключен!`, {
-        reply_markup: {
-          inline_keyboard: getWalletMainKeyboard(),
-        },
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message: `Кошелек ${walletName} подключен!`,
+        keyboard: getWalletMainKeyboard(),
       })
     }
 
     const errorHandler = async (error: Error) => {
-      await ctx.reply(`Произошла ошибка при подключении кошелька: ${error.message}`)
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message: `Произошла ошибка при подключении кошелька: ${error.message}`,
+        keyboard: [[{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }]],
+      })
     }
 
     const { link, wallets, image } = await this.walletService.getWalletListWithLink(
@@ -324,7 +293,10 @@ export class MainWalletService {
     )
 
     if (!wallets.length) {
-      await ctx.sendMessage('Произошла ошибка, не удается получить список доступных для пользователя кошельков')
+      await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+        message: 'Произошла ошибка, не удается получить список доступных для пользователя кошельков',
+        keyboard: undefined,
+      })
 
       return
     }

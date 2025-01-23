@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { CHAIN, toUserFriendlyAddress, Wallet } from '@tonconnect/sdk'
+import { beginCell } from '@ton/ton'
+import { CHAIN, toUserFriendlyAddress, Wallet, WalletInfo } from '@tonconnect/sdk'
 import * as QRCode from 'qrcode'
 import { TonConnectService, TonConnectWallets } from 'src/services'
 
@@ -80,6 +81,96 @@ export class WalletService {
     }
   }
 
+  public async sendTonTransaction(
+    chatId: number,
+    amount: string,
+    type: 'deposit' | 'withdraw' = 'deposit',
+    txMessage?: string,
+    requestSent?: (walletInfo: WalletInfo, walletAddress: string, isTestnet: boolean) => void,
+  ) {
+    const connector = this.tonConnectService.getConnector(chatId)
+
+    await connector.restoreConnection()
+
+    if (!connector.connected) {
+      return {
+        isError: true,
+        message: 'У вас нет подключенного кошелька',
+      }
+    }
+
+    if (!type) {
+      return {
+        isError: true,
+        message: 'Не удалось получить тип транзакции',
+      }
+    }
+
+    if (connector.wallet.account.chain === CHAIN.TESTNET && !this.customConfigService.testnetEnabled) {
+      return {
+        isError: true,
+        message: 'Вы не можете оплачивать кошельком в тестовой сети',
+      }
+    }
+
+    const nanos = await this.paymentProvidersService.getNanos(PAYMENT_PROVIDER.TON, amount)
+
+    const walletInfo = await this.tonConnectWallets.getWalletInfo(connector?.wallet?.device?.appName)
+
+    const body = beginCell()
+      .storeUint(0, 32) // write 32 zero bits to indicate that a text comment will follow
+      .storeStringTail(txMessage) // write our text comment
+      .endCell()
+
+    if (type === 'deposit') {
+      const transaction = await connector.sendTransaction(
+        {
+          /**
+           * 20 minutes
+           */
+          validUntil: Math.floor(Date.now() / 1000) + 20 * 60,
+          messages: [
+            {
+              address: this.tonDepositAddress,
+              amount: nanos.validAmount.toString(),
+              payload: body.toBoc().toString('base64'),
+            },
+          ],
+        },
+        {
+          onRequestSent: () => {
+            requestSent?.(
+              walletInfo,
+              connector.wallet.account.address,
+              connector.wallet.account.chain === CHAIN.TESTNET,
+            )
+          },
+        },
+      )
+
+      const { hash, scanUrl } = await this.paymentProvidersService.getMsgHashAndScan(
+        PAYMENT_PROVIDER.TON,
+        transaction.boc,
+      )
+
+      const walletAddress = toUserFriendlyAddress(
+        connector.wallet.account.address,
+        connector.wallet.account.chain === CHAIN.TESTNET,
+      )
+
+      return {
+        isError: false,
+        message: 'Транзакция отправлена',
+        transaction: {
+          hash,
+          scanUrl,
+          chain: connector.wallet.account.chain,
+          walletAddress,
+        },
+      }
+    }
+  }
+
   public async showConnectedWallet(chatId: number) {
     const connector = this.tonConnectService.getConnector(chatId)
 
@@ -149,8 +240,19 @@ export class WalletService {
 
           this.logger.log('connector.success', wallet)
 
-          if (onStatusChangedSuccessHandler) {
+          const isTestnetChainError =
+            connector.wallet.account.chain === CHAIN.TESTNET && !this.customConfigService.testnetEnabled
+
+          if (onStatusChangedSuccessHandler && !isTestnetChainError) {
             onStatusChangedSuccessHandler?.(wallet)
+          }
+
+          if (isTestnetChainError && onStatusChangedErrorHandler) {
+            onStatusChangedErrorHandler?.(
+              new Error('Вы не можете подключить кошелек в тестовой сети, попробуйте поменять сеть на Mainnet'),
+            )
+
+            connector.disconnect()
           }
         },
         (error) => {
@@ -200,8 +302,19 @@ export class WalletService {
 
           this.logger.log('connector.success', wallet)
 
-          if (onStatusChangedSuccessHandler) {
+          const isTestnetChainError =
+            connector.wallet.account.chain === CHAIN.TESTNET && !this.customConfigService.testnetEnabled
+
+          if (onStatusChangedSuccessHandler && !isTestnetChainError) {
             onStatusChangedSuccessHandler?.(wallet)
+          }
+
+          if (isTestnetChainError && onStatusChangedErrorHandler) {
+            onStatusChangedErrorHandler?.(
+              new Error('Вы не можете подключить кошелек в тестовой сети, попробуйте поменять сеть на Mainnet'),
+            )
+
+            connector.disconnect()
           }
         },
         (error) => {
