@@ -14,6 +14,10 @@ export enum TransactionProvider {
   INTERNAL = 'INTERNAL',
 }
 
+export enum TransactionBlockchainProvider {
+  TON = 'TON',
+}
+
 export enum TransactionPayloadType {
   TRANSFER = 'transfer',
   SHOW_WISH_BOOKED_USER = 'show_wish_booked_user',

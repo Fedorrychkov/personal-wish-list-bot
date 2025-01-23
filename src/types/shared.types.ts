@@ -4,7 +4,7 @@ export type ValuesMap<T extends AnyString, K> = {
   [Key in T]: K
 }
 
-export type AnyCurrency = 'XTR' | AnyString
+export type AnyCurrency = 'XTR' | 'TON' | AnyString
 
 export type PaginationResponse<T> = {
   list: T[]

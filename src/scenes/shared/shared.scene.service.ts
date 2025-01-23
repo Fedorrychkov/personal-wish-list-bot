@@ -12,6 +12,7 @@ import {
 import { UserDocument, WishDocument, WishEntity, WishStatus } from 'src/entities'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { CustomConfigService, WishService } from 'src/modules'
+import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { getUrlMetadata } from '../wish/utils/getUrlMetadata'
@@ -231,5 +232,43 @@ export class SharedService {
 
       await ctx.replyWithHTML(text, props)
     }
+  }
+
+  async tryToMutateOrReplyNewContent(
+    ctx: SceneContext,
+    options: { message: string; keyboard?: InlineKeyboardButton[][] },
+  ) {
+    const { keyboard, message } = options || {}
+    const isCaption = !!ctx.callbackQuery?.message && !!(ctx.callbackQuery?.message as any).photo?.length
+
+    if (!isCaption && !!ctx.callbackQuery?.message) {
+      await ctx.editMessageText(message, {
+        reply_markup: {
+          inline_keyboard: keyboard ? keyboard : undefined,
+        },
+        parse_mode: 'HTML',
+      })
+
+      return
+    }
+
+    if (isCaption && !!ctx.callbackQuery?.message) {
+      await ctx.editMessageCaption(message, {
+        parse_mode: 'HTML',
+      })
+
+      await ctx.editMessageReplyMarkup({
+        inline_keyboard: keyboard ? keyboard : undefined,
+      })
+
+      return
+    }
+
+    await ctx.reply(message, {
+      reply_markup: {
+        inline_keyboard: keyboard ? keyboard : undefined,
+      },
+      parse_mode: 'HTML',
+    })
   }
 }

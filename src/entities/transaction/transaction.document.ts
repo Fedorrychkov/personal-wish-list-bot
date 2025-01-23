@@ -1,7 +1,12 @@
 import { Timestamp } from '@google-cloud/firestore'
 import { AnyCurrency } from 'src/types'
 
-import { TransactionProvider, TransactionStatus, TransactionType } from './transaction.types'
+import {
+  TransactionBlockchainProvider,
+  TransactionProvider,
+  TransactionStatus,
+  TransactionType,
+} from './transaction.types'
 
 /**
  * В моделях сущностей не может быть undefined полей, это ограничение firestore, разрешен только null или значения
@@ -17,6 +22,10 @@ export class TransactionDocument {
   status: TransactionStatus
   type: TransactionType
   provider: TransactionProvider
+  blockchainProvider?: TransactionBlockchainProvider
+  actionAddress?: string | null
+  chain?: string
+  blockchain?: string | null
   amount: string
   currency: AnyCurrency
   providerInvoiceId?: string
@@ -52,6 +61,7 @@ export class TransactionDocument {
   /**
    * Время истечения срока транзакции
    */
+  statusMessage?: string | null
   expiredAt?: Timestamp | null
   createdAt?: Timestamp | null
   updatedAt?: Timestamp | null
