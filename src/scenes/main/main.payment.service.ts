@@ -1,3 +1,4 @@
+import { Timestamp } from '@google-cloud/firestore'
 import { Injectable, Logger } from '@nestjs/common'
 import { Action, Command, Ctx, On, Update } from 'nestjs-telegraf'
 import { TRANSACTION_DEPOSIT_COMISSION, TRANSACTION_DEPOSIT_COMISSION_NUMBER } from 'src/constants'
@@ -11,6 +12,7 @@ import {
   UserEntity,
 } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
+import { time } from 'src/helpers'
 import { CustomConfigService, TransactionService } from 'src/modules'
 import { WalletService } from 'src/modules/wallet'
 import { SuccessfulPaymentType } from 'src/types'
@@ -261,6 +263,7 @@ export class MainPaymentService {
             chain: response.transaction.chain,
             blockchainProvider: TransactionBlockchainProvider.TON,
             actionAddress: response.transaction.walletAddress,
+            refundExpiredAt: Timestamp.fromDate(time().add(10, 'second').toDate()),
             amount: amount,
             providerInvoiceId: response.transaction.hash,
           })
@@ -379,6 +382,7 @@ export class MainPaymentService {
             chain: response.transaction.chain,
             blockchainProvider: TransactionBlockchainProvider.TON,
             actionAddress: response.transaction.walletAddress,
+            refundExpiredAt: Timestamp.fromDate(time().add(10, 'second').toDate()),
             amount: amount,
             providerInvoiceId: response.transaction.hash,
           })

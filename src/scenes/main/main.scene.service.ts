@@ -13,7 +13,7 @@ import {
   getWishItemKeyboard,
 } from 'src/constants/keyboards'
 import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
-import { transactionCurrencyLabels, UserDocument, UserEntity, WishEntity } from 'src/entities'
+import { transactionCurrencyLabels, UserDocument, UserEntity, UserRole, WishEntity } from 'src/entities'
 import { GameStatus } from 'src/entities/santa/santa.types'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { getImageBuffer, jsonParse, safeAtob } from 'src/helpers'
@@ -388,10 +388,12 @@ export class MainSceneService {
   @Action(MAIN_CALLBACK_DATA.menu)
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
-  async menu(@Ctx() ctx: SceneContext) {
+  async menu(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
+    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+
     await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
       message: '<b>Доступные команды</b>',
-      keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+      keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl, isSuperAdmin: isAdmin }),
     })
   }
 

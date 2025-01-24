@@ -34,10 +34,20 @@ export const MAIN_CALLBACK_DATA = {
   getReleaseNotes: 'get_release_notes',
   menu: 'menu',
   help: 'help',
+  refferalSystem: 'refferal_system',
+}
+
+export const SUPER_ADMIN_CALLBACK_DATA = {
   updateUserRoleToUser: 'update_user_role_to_user',
   updateWishStatusToActive: 'update_wish_status_to_active',
   sendNewsNotificationToAllUsers: 'send_news_notification_to_all_users',
-  refferalSystem: 'refferal_system',
+  userCurrentBalancesList: 'user_current_balances_list',
+  platformDonatesBalance: 'platform_donates_balance',
+  platformBalanceByComissions: 'platform_balance_by_comissions',
+  maximumUsernameLength: 'maximum_username_length',
+  maximumWishesInCategory: 'maximum_wishes_in_category',
+  maximumCategoriesListLengthByUser: 'maximum_categories_list_length_by_user',
+  superMenu: 'super_menu',
 }
 
 export const PAYMENT_CALLBACK_DATA = {

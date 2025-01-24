@@ -54,11 +54,13 @@ export class UserEntity {
     }
   }
 
-  async findAll(filter: UserFilter): Promise<UserDocument[]> {
+  async findAll(filter: UserFilter, withOrder = true): Promise<UserDocument[]> {
     const list: UserDocument[] = []
     let query = this.findAllGenerator(filter)
 
-    query = query.orderBy('createdAt', 'desc')
+    if (withOrder) {
+      query = query.orderBy('createdAt', 'desc')
+    }
 
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))

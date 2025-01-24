@@ -10,6 +10,7 @@ export const codes = {
   TRANSACTION_NOT_ENOUGH_BALANCE: 'TRANSACTION_NOT_ENOUGH_BALANCE',
   TRANSACTION_TARGET_USER_EMPTY_OR_EQUAL_USER: 'TRANSACTION_TARGET_USER_EMPTY_OR_EQUAL_USER',
   TRANSACTION_NOT_SUPPORTED_PURCHASE_TYPE: 'TRANSACTION_NOT_SUPPORTED_PURCHASE_TYPE',
+  TRANSACTION_NOT_SUPPORTED_PROVIDER: 'TRANSACTION_NOT_SUPPORTED_PROVIDER',
 }
 
 export const errors = {
@@ -26,5 +27,7 @@ export const errors = {
     [codes.TRANSACTION_ALREADY_REFUNDED]: 'Транзакция уже возвращена',
     [codes.TRANSACTION_NOT_ENOUGH_BALANCE]: 'Недостаточно средств на балансе',
     [codes.TRANSACTION_TARGET_USER_EMPTY_OR_EQUAL_USER]: 'Некорректный пользователь для перевода',
+    [codes.TRANSACTION_NOT_SUPPORTED_PROVIDER]:
+      'Транзакция не может быть возвращена, так как не поддерживается провайдером',
   },
 }

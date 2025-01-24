@@ -61,11 +61,13 @@ export class CategroyEntity {
     return query
   }
 
-  async findAll(filter: CategoryFilter): Promise<CategoryDocument[]> {
+  async findAll(filter: CategoryFilter, withOrder = true): Promise<CategoryDocument[]> {
     const list: CategoryDocument[] = []
     let query = this.findAllGenerator(filter)
 
-    query = query.orderBy('createdAt', 'desc')
+    if (withOrder) {
+      query = query.orderBy('createdAt', 'desc')
+    }
 
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))

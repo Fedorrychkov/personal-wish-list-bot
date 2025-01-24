@@ -271,4 +271,48 @@ export class SharedService {
       parse_mode: 'HTML',
     })
   }
+
+  public async generateCsvFile<T>(
+    data: T[],
+    definedKeys?: string[],
+    options?: {
+      ctx?: SceneContext
+      filename?: string
+      caption?: string
+    },
+  ) {
+    if (!data?.length) {
+      return
+    }
+
+    const keys = definedKeys || Object.keys(data[0])
+
+    let csvContent = ''
+    const head = keys.join(',')
+    csvContent += `${head}\r\n`
+
+    data?.forEach((item: T) => {
+      const rowArray = keys?.map((key) => item?.[key])
+      const row = rowArray.join(',')
+      csvContent += `${row}\r\n`
+    })
+
+    const buffer = Buffer.from(csvContent, 'utf-8')
+
+    const { ctx, filename, caption } = options || {}
+
+    if (ctx) {
+      await ctx.replyWithDocument(
+        {
+          source: buffer,
+          filename: `${filename}.csv`,
+        },
+        {
+          caption,
+        },
+      )
+    }
+
+    return buffer
+  }
 }

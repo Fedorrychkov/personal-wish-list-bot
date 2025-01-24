@@ -69,11 +69,13 @@ export class WishEntity {
     return query
   }
 
-  async findAll(filter: WishFilter): Promise<WishDocument[]> {
+  async findAll(filter: WishFilter, withOrder = true): Promise<WishDocument[]> {
     const list: WishDocument[] = []
     let query = this.findAllGenerator(filter)
 
-    query = query.orderBy('createdAt', 'desc')
+    if (withOrder) {
+      query = query.orderBy('createdAt', 'desc')
+    }
 
     const snapshot = await query.get()
     snapshot.forEach((doc) => list.push(doc.data()))

@@ -36,6 +36,7 @@ import { TelegrafCustomService } from 'src/services'
 import { PaginationResponse, TgInitUser } from 'src/types'
 
 import { CustomConfigService } from '../config'
+import { computedBalance } from './helper'
 import { TransactionPurchaseService } from './transaction.purchase.service'
 
 @Injectable()
@@ -217,58 +218,63 @@ export class TransactionService {
           TransactionStatus.PAID,
         ].includes(transaction?.status)
 
-      const balanceCurrency = transaction?.currency
-      const balanceAmount = transaction?.amount || '0'
+      return computedBalance(acc, transaction, {
+        isAvailableTopup,
+        isAvailableWithdraw,
+      })
+    }, [])
 
-      const isAvailableAfterRefundableDateLimit = transaction?.refundExpiredAt
-        ? time().isAfter(transaction?.refundExpiredAt?.toDate())
-        : true
+    return balances
+  }
 
-      if (isAvailableTopup && !isAvailableAfterRefundableDateLimit && transaction?.type === TransactionType.REFFERAL) {
-        return acc
-      }
+  public async donatesBalance(user: TgInitUser): Promise<TransactionBalanceItem[]> {
+    const transactions = await this.transactionEntity.findAll(
+      {
+        userId: user?.id?.toString(),
+        types: [TransactionType.SUPPORT],
+      },
+      false,
+    )
 
-      /**
-       * На первом шаге формируем первую запись баланса, или оставляем пустой массив
-       */
-      if (!acc?.length && (isAvailableTopup || isAvailableWithdraw)) {
-        acc.push(
-          isAvailableTopup
-            ? { amount: balanceAmount, currency: balanceCurrency }
-            : { amount: String(Number(balanceAmount) * -1), currency: balanceCurrency },
-        )
+    if (!transactions.length) {
+      return []
+    }
 
-        return acc
-      }
+    const balances: TransactionBalanceItem[] = transactions.reduce((acc: TransactionBalanceItem[], transaction) => {
+      const isAvailableTopup = [TransactionStatus.CONFIRMED].includes(transaction?.status)
 
-      const balanceByCurrency = acc.find((item) => item?.currency === balanceCurrency) || {
-        amount: '0',
-        currency: balanceCurrency,
-      }
-      const filteredBalances = acc.filter((item) => item?.currency !== balanceCurrency)
+      return computedBalance(acc, transaction, {
+        isAvailableTopup,
+        isAvailableWithdraw: false,
+      })
+    }, [])
 
-      if (isAvailableTopup || isAvailableWithdraw) {
-        const newAcc = [...(filteredBalances || [])]
+    return balances
+  }
 
-        newAcc.push(
-          isAvailableTopup
-            ? {
-                amount: String(Number(balanceByCurrency?.amount || 0) + Number(balanceAmount || 0)),
-                currency: balanceByCurrency.currency,
-              }
-            : {
-                /**
-                 * Для вывода, мы делаем сумму позитивной и отнимаем от нее сумму из транзакции вывода и снова делаем отрицательной
-                 */
-                amount: String(Number(balanceByCurrency?.amount || 0) - Number(balanceAmount || 0)),
-                currency: balanceByCurrency.currency || '',
-              },
-        )
+  public async platformBalanceByComissions(user: TgInitUser): Promise<TransactionBalanceItem[]> {
+    const transactions = await this.transactionEntity.findAll(
+      {
+        userId: user?.id?.toString(),
+      },
+      false,
+    )
 
-        return newAcc
-      }
+    if (!transactions.length) {
+      return []
+    }
 
-      return acc
+    const balances: TransactionBalanceItem[] = transactions.reduce((acc: TransactionBalanceItem[], transaction) => {
+      const isAvailableTopupStatus = [TransactionStatus.CONFIRMED].includes(transaction?.status)
+      const isAvailableFee =
+        !Number.isNaN(Number(transaction?.comissionAmount)) && Number(transaction?.comissionAmount) > 0
+
+      return computedBalance(acc, transaction, {
+        isAvailableTopup: isAvailableTopupStatus && isAvailableFee,
+        isAvailableWithdraw: false,
+        currencyPropertyName: 'comissionCurrency',
+        amountPropertyName: 'comissionAmount',
+      })
     }, [])
 
     return balances
@@ -411,6 +417,7 @@ export class TransactionService {
     const isConfirmed = transaction?.status === TransactionStatus.CONFIRMED
     const isRefunded = transaction?.status === TransactionStatus.REFUNDED
     const isRefundableType = [TransactionType.SUPPORT, TransactionType.USER_TOPUP].includes(transaction?.type)
+    const isRefundableProvider = [TransactionProvider.TELEGRAM].includes(transaction?.provider)
     const isUserTopupType = transaction?.type === TransactionType.USER_TOPUP
     const balanceAvailable =
       isUserTopupType && !isRefunded ? await this.balance({ id: Number(transaction?.userId) }) : []
@@ -422,7 +429,8 @@ export class TransactionService {
     const isUnexpiredRefund = transaction?.refundExpiredAt
       ? time(transaction?.refundExpiredAt?.toDate()).isAfter(time())
       : true
-    const isCanRefund = isConfirmed && isRefundableType && isUnexpiredRefund && isBalanceAvailable && !isRefunded
+    const isCanRefund =
+      isConfirmed && isRefundableType && isRefundableProvider && isUnexpiredRefund && isBalanceAvailable && !isRefunded
 
     if (isCanRefund) {
       return transaction
@@ -450,6 +458,13 @@ export class TransactionService {
     }
 
     if (!isBalanceAvailable) {
+      throw new BadRequestException({
+        code: ERROR_CODES.transaction.codes.TRANSACTION_BALANCE_NOT_AVAILABLE,
+        message: ERROR_CODES.transaction.messages.TRANSACTION_BALANCE_NOT_AVAILABLE,
+      })
+    }
+
+    if (!isRefundableProvider) {
       throw new BadRequestException({
         code: ERROR_CODES.transaction.codes.TRANSACTION_BALANCE_NOT_AVAILABLE,
         message: ERROR_CODES.transaction.messages.TRANSACTION_BALANCE_NOT_AVAILABLE,

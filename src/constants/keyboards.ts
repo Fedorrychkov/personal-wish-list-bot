@@ -1,6 +1,11 @@
 import { WishDocument } from 'src/entities'
 import { jsonStringify } from 'src/helpers'
-import { MAIN_CALLBACK_DATA, PAYMENT_CALLBACK_DATA, WALLET_CALLBACK_DATA } from 'src/scenes/main/constants'
+import {
+  MAIN_CALLBACK_DATA,
+  PAYMENT_CALLBACK_DATA,
+  SUPER_ADMIN_CALLBACK_DATA,
+  WALLET_CALLBACK_DATA,
+} from 'src/scenes/main/constants'
 import { WISH_CALLBACK_DATA } from 'src/scenes/wish/constants'
 import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram'
 
@@ -19,7 +24,7 @@ export const getAnotherUserWishListById = (userId: string, username?: string) =>
 ]
 
 export const getMainKeyboards = (options?: KeyboardType) => {
-  const { webAppUrl } = options || {}
+  const { webAppUrl, isSuperAdmin } = options || {}
 
   const btns: InlineKeyboardButton[][] = [
     [{ text: 'Управление желаниями', callback_data: WISH_CALLBACK_DATA.openWishScene }],
@@ -33,6 +38,10 @@ export const getMainKeyboards = (options?: KeyboardType) => {
   btns.push([{ text: 'Реферальная система', callback_data: MAIN_CALLBACK_DATA.refferalSystem }])
   btns.push([{ text: 'Управление кошельками', callback_data: WALLET_CALLBACK_DATA.wallets }])
   btns.push([{ text: 'Меню оплат', callback_data: PAYMENT_CALLBACK_DATA.paymentMenu }])
+
+  if (isSuperAdmin) {
+    btns.push([{ text: 'Сервисные команды', callback_data: SUPER_ADMIN_CALLBACK_DATA.superMenu }])
+  }
 
   return btns
 }
