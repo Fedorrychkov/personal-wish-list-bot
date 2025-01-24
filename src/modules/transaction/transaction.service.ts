@@ -252,6 +252,43 @@ export class TransactionService {
     return balances
   }
 
+  public async purchasesBalanceAndSize(
+    user: TgInitUser,
+  ): Promise<{ balances: TransactionBalanceItem[]; size: number; santas: number; wishes: number }> {
+    const transactions = await this.transactionEntity.findAll(
+      {
+        userId: user?.id?.toString(),
+        types: [TransactionType.PURCHASE],
+      },
+      false,
+    )
+
+    if (!transactions.length) {
+      return {
+        balances: [],
+        size: 0,
+        santas: 0,
+        wishes: 0,
+      }
+    }
+
+    const balances: TransactionBalanceItem[] = transactions.reduce((acc: TransactionBalanceItem[], transaction) => {
+      const isAvailableTopup = [TransactionStatus.CONFIRMED].includes(transaction?.status)
+
+      return computedBalance(acc, transaction, {
+        isAvailableTopup,
+        isAvailableWithdraw: false,
+      })
+    }, [])
+
+    return {
+      balances,
+      size: transactions.filter((transaction) => transaction?.status === TransactionStatus.CONFIRMED).length,
+      santas: transactions.filter((transaction) => !!transaction?.santaGameId).length,
+      wishes: transactions.filter((transaction) => !!transaction?.wishId).length,
+    }
+  }
+
   public async platformBalanceByComissions(user: TgInitUser): Promise<TransactionBalanceItem[]> {
     const transactions = await this.transactionEntity.findAll(
       {

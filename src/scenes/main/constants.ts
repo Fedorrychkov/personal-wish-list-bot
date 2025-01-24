@@ -47,6 +47,9 @@ export const SUPER_ADMIN_CALLBACK_DATA = {
   maximumUsernameLength: 'maximum_username_length',
   maximumWishesInCategory: 'maximum_wishes_in_category',
   maximumCategoriesListLengthByUser: 'maximum_categories_list_length_by_user',
+  usersHasWishesInBot: 'users_has_wishes_in_bot',
+  usersCreatedSantaGame: 'users_created_santa_game',
+  usersPurchasesSizeAndBalance: 'users_purchases_size_and_balance',
   superMenu: 'super_menu',
 }
 

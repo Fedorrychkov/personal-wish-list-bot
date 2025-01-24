@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { CategoryModule, CustomConfigModule, FileModule, TransactionModule, UserModule, WishModule } from 'src/modules'
 import { GameModule } from 'src/modules/games'
+import { SantaModule } from 'src/modules/games/santa'
 import { WalletModule } from 'src/modules/wallet'
 import { SharedSceneModule } from 'src/scenes/shared'
 
@@ -21,6 +22,7 @@ import { SendNewsSceneService } from './send-news'
     GameModule,
     TransactionModule,
     WalletModule,
+    SantaModule,
   ],
   controllers: [],
   providers: [MainSceneService, SendNewsSceneService, MainPaymentService, MainSuperService, MainWalletService],

@@ -9,6 +9,6 @@ import { SantaService } from './santa.service'
   imports: [TelegrafCustomModule, CustomConfigModule],
   controllers: [],
   providers: [SantaService, SantaEntity, SantaPlayerEntity, UserEntity],
-  exports: [SantaService],
+  exports: [SantaService, SantaEntity],
 })
 export class SantaModule {}
