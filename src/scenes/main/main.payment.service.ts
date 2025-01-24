@@ -6,6 +6,7 @@ import { getMainOpenWebAppButton } from 'src/constants/keyboards'
 import { AvailableChatTypes } from 'src/decorator'
 import {
   TransactionBlockchainProvider,
+  transactionCurrencyLabels,
   TransactionProvider,
   TransactionStatus,
   TransactionType,
@@ -38,11 +39,28 @@ export class MainPaymentService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async paySupport(@Ctx() ctx: SceneContext) {
-    await ctx.reply(`
-В боте желаний есть возможность оплатить что либо при помощи Telegram Stars и криптовалютой TON.
+    await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+      message: `
+<b>Про оплаты</b>
+
+В боте желаний есть возможность оплатить что либо при помощи Telegram Stars ${transactionCurrencyLabels['XTR']} и криптовалютой TON ${transactionCurrencyLabels['TON']}.
 
 Однако не все оплаты подразумевают возврат средств, но если вы очень хотите вернуть средства - свяжитесь с разработчиком бота.
-`)
+
+<b>Оплата при помощи Telegram Stars ${transactionCurrencyLabels['XTR']}</b>
+
+Средства можно вернуть в течении 21 дня (вместе с комиссией).
+
+<b>Оплата при помощи криптовалюты TON</b>
+
+Средства нельзя вернуть. Но их можно потратить на внутренние покупки и переводы или воспользоваться функциями Вывода средств.
+`,
+      keyboard: [
+        [{ text: 'Донаты', callback_data: PAYMENT_CALLBACK_DATA.donates }],
+        [{ text: 'Пополнение баланса', callback_data: PAYMENT_CALLBACK_DATA.topupBalance }],
+        [{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }],
+      ],
+    })
   }
 
   @Command(PAYMENT_CALLBACK_DATA.supportXtr)
@@ -110,6 +128,7 @@ export class MainPaymentService {
       keyboard: [
         [{ text: 'Донаты', callback_data: PAYMENT_CALLBACK_DATA.donates }],
         [{ text: 'Пополнение баланса', callback_data: PAYMENT_CALLBACK_DATA.topupBalance }],
+        [{ text: 'Про оплаты', callback_data: PAYMENT_CALLBACK_DATA.paySupport }],
         [{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }],
       ],
     })
@@ -150,20 +169,16 @@ export class MainPaymentService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async userTopupXtr(@Ctx() ctx: SceneContext) {
-    await ctx.reply(
-      `Выберите сумму пополнения баланса. Средства можно вернуть в течении 21 дня (вместе с комиссией). При оплате, будет удержана комиссия в размере ${TRANSACTION_DEPOSIT_COMISSION}%`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '50 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 50` }],
-            [{ text: '100 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 100` }],
-            [{ text: '200 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 200` }],
-            [{ text: '500 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 500` }],
-            [{ text: '1000 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 1000` }],
-          ],
-        },
-      },
-    )
+    await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+      message: `Выберите сумму пополнения баланса. Средства можно вернуть в течении 21 дня (вместе с комиссией). При оплате, будет удержана комиссия в размере ${TRANSACTION_DEPOSIT_COMISSION}%`,
+      keyboard: [
+        [{ text: '50 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 50` }],
+        [{ text: '100 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 100` }],
+        [{ text: '200 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 200` }],
+        [{ text: '500 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 500` }],
+        [{ text: '1000 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 1000` }],
+      ],
+    })
   }
 
   @Command(PAYMENT_CALLBACK_DATA.supportWithXtr)

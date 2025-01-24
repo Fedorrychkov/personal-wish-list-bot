@@ -459,6 +459,13 @@ export class MainSuperService {
     }
 
     const santas = await this.santaEntity.findAll({}, false)
+
+    if (!santas.length) {
+      await ctx.reply('Нет пользователей с Санта играми')
+
+      return
+    }
+
     const userIds = [...new Set(santas.map((santa) => santa?.userId)).values()]
 
     const users = await Promise.all(
@@ -548,6 +555,12 @@ export class MainSuperService {
         total: user?.size,
       }))
       .sort((a, b) => Number(b?.total || 0) - Number(a?.total || 0))
+
+    if (!filteredUserBalances.length) {
+      await ctx.reply('Нет пользователей с покупками')
+
+      return
+    }
 
     const responseForCsv = filteredUserBalances.map((user) => ({
       userId: user?.userId,
