@@ -1,7 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Action, Command, Ctx, Update } from 'nestjs-telegraf'
+import { getSuperKeyboards } from 'src/constants'
 import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
-import { CategroyEntity, SantaEntity, UserDocument, UserEntity, UserRole, WishEntity, WishStatus } from 'src/entities'
+import {
+  CategroyEntity,
+  SantaEntity,
+  UserDocument,
+  UserEntity,
+  UserRole,
+  validateGuardRole,
+  WishEntity,
+  WishStatus,
+} from 'src/entities'
 import { GameStatus } from 'src/entities/santa/santa.types'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { TransactionService } from 'src/modules'
@@ -28,9 +38,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async superMenu(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN, UserRole.ANALYTIC])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
         message: 'У вас нет прав на это действие',
       })
@@ -39,41 +49,8 @@ export class MainSuperService {
     }
 
     await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
-      message: '<b>Super Admin Menu</b>',
-      keyboard: [
-        [{ text: 'Update User Role To User', callback_data: SUPER_ADMIN_CALLBACK_DATA.updateUserRoleToUser }],
-        [{ text: 'Update Wish Status To Active', callback_data: SUPER_ADMIN_CALLBACK_DATA.updateWishStatusToActive }],
-        [
-          {
-            text: 'Send News Notification To All Users',
-            callback_data: SUPER_ADMIN_CALLBACK_DATA.sendNewsNotificationToAllUsers,
-          },
-        ],
-        [{ text: 'Maximum Username Length', callback_data: SUPER_ADMIN_CALLBACK_DATA.maximumUsernameLength }],
-        [{ text: 'Maximum Wishes In Category', callback_data: SUPER_ADMIN_CALLBACK_DATA.maximumWishesInCategory }],
-        [
-          {
-            text: 'Maximum Category Length By User',
-            callback_data: SUPER_ADMIN_CALLBACK_DATA.maximumCategoriesListLengthByUser,
-          },
-        ],
-        [{ text: 'User Current Balances List', callback_data: SUPER_ADMIN_CALLBACK_DATA.userCurrentBalancesList }],
-        [
-          {
-            text: 'Platform Balance By Comissions',
-            callback_data: SUPER_ADMIN_CALLBACK_DATA.platformBalanceByComissions,
-          },
-        ],
-        [{ text: 'Platform Donates Balance', callback_data: SUPER_ADMIN_CALLBACK_DATA.platformDonatesBalance }],
-        [{ text: 'Users Has Wishes In Bot', callback_data: SUPER_ADMIN_CALLBACK_DATA.usersHasWishesInBot }],
-        [{ text: 'Users who created any Santa Game', callback_data: SUPER_ADMIN_CALLBACK_DATA.usersCreatedSantaGame }],
-        [
-          {
-            text: 'Users Purchases Size And Balance',
-            callback_data: SUPER_ADMIN_CALLBACK_DATA.usersPurchasesSizeAndBalance,
-          },
-        ],
-      ],
+      message: '<b>Service Menu</b>',
+      keyboard: getSuperKeyboards({ userRoles: userContext.role }),
     })
   }
 
@@ -82,9 +59,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async userCurrentBalancesList(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -144,9 +121,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async platformBalanceByComissions(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -206,9 +183,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async platformDonatesBalance(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -268,9 +245,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async maximumUsernameLength(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN, UserRole.ANALYTIC])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -300,9 +277,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async maximumCategoriesListLengthByUser(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN, UserRole.ANALYTIC])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -346,9 +323,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async maximumWishesInCategory(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN, UserRole.ANALYTIC])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -404,9 +381,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async usersHasWishesInBot(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN, UserRole.ANALYTIC])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -450,9 +427,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async usersCreatedSantaGame(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN, UserRole.ANALYTIC])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -506,9 +483,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async usersPurchasesSizeAndBalance(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -587,9 +564,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async updateUserRolesToUser(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -625,9 +602,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async sendNewsNotificationToAllUsers(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return
@@ -641,9 +618,9 @@ export class MainSuperService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async updateWishStatusToActive(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       return

@@ -17,6 +17,8 @@ export class UserDocument {
   avatarUrl?: string | null
   isBot?: boolean | null
   phone?: string | null
+  statusMessage?: string | null
+  languageCode?: string | null
   appOnboardingKey?: string
   /**
    * Хэш реферальной системы, может быть как внутренняя, так и внешняя

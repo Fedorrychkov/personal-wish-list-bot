@@ -85,6 +85,8 @@ export class UserEntity {
       refferalHash: user.refferalHash || null,
       refferrerUserId: user.refferrerUserId || null,
       refferalCommission: user.refferalCommission || null,
+      statusMessage: user.statusMessage || null,
+      languageCode: user.languageCode || null,
       phone: user.phone || null,
       role: user.role || null,
       createdAt: user.createdAt || createdAt,

@@ -13,7 +13,7 @@ import {
   getWishItemKeyboard,
 } from 'src/constants/keyboards'
 import { AvailableChatTypes, ChatTelegrafContext, UserTelegrafContext } from 'src/decorator'
-import { transactionCurrencyLabels, UserDocument, UserEntity, UserRole, WishEntity } from 'src/entities'
+import { transactionCurrencyLabels, UserDocument, UserEntity, WishEntity } from 'src/entities'
 import { GameStatus } from 'src/entities/santa/santa.types'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { getImageBuffer, jsonParse, safeAtob } from 'src/helpers'
@@ -334,7 +334,7 @@ export class MainSceneService {
       await ctx.reply(
         `@${
           ctx?.from?.username
-        }, добро пожаловать в бот списка желайни, введите или выберите команду /help, для знакомства с функционалом бота ${
+        }, добро пожаловать в бот списка желаний, введите или выберите команду /help, для знакомства с функционалом бота ${
           payload?.username ? '' : botWelcomeUserNameText
         }`,
       )
@@ -369,7 +369,10 @@ export class MainSceneService {
     if (!sharedUser || !isDifferentUsers) {
       await ctx.reply('С возвращением! Чтобы посмотреть возможности бота, можете ввести или выбрать команду /help', {
         reply_markup: {
-          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
+          inline_keyboard: getMainKeyboards({
+            webAppUrl: this.customConfigService.miniAppUrl,
+            userRoles: userContext.role,
+          }),
         },
       })
     }
@@ -389,11 +392,12 @@ export class MainSceneService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async menu(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
-
     await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
       message: '<b>Доступные команды</b>',
-      keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl, isSuperAdmin: isAdmin }),
+      keyboard: getMainKeyboards({
+        webAppUrl: this.customConfigService.miniAppUrl,
+        userRoles: userContext.role,
+      }),
     })
   }
 
@@ -417,9 +421,8 @@ export class MainSceneService {
   @Command(MAIN_CALLBACK_DATA.refferalSystem)
   @Action(MAIN_CALLBACK_DATA.refferalSystem)
   async showRefferalSystem(@Ctx() ctx: SceneContext) {
-    await ctx.reply(
-      `
-<b>Реферальная система</b>
+    await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+      message: `<b>Реферальная система</b>
 
 Вы можете зарабатывать внутри бота, приглашая новых пользователей.
 
@@ -445,13 +448,8 @@ export class MainSceneService {
         START_PAYLOAD_KEYS.refferalSystem
       }${Buffer.from(ctx?.from?.id?.toString() || '').toString('base64')}
 `,
-      {
-        reply_markup: {
-          inline_keyboard: getMainKeyboards({ webAppUrl: this.customConfigService.miniAppUrl }),
-        },
-        parse_mode: 'HTML',
-      },
-    )
+      keyboard: [[{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }]],
+    })
   }
 
   @AvailableChatTypes('private')

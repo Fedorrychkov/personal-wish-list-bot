@@ -10,8 +10,10 @@ import {
   getWishSceneKeyboards,
 } from 'src/constants/keyboards'
 import { UserDocument, WishDocument, WishEntity, WishStatus } from 'src/entities'
+import { time } from 'src/helpers'
 import { tryToGetUrlOrEmptyString } from 'src/helpers/url'
 import { CustomConfigService, WishService } from 'src/modules'
+import { PaginationResponse } from 'src/types'
 import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -29,19 +31,10 @@ export class SharedService {
   async enterWishScene(@Ctx() ctx: SceneContext) {
     await ctx?.scene?.leave?.()
 
-    if ((ctx as any)?.update?.callback_query?.message?.from?.is_bot) {
-      await ctx.editMessageText('Управление желаниями', {
-        reply_markup: {
-          inline_keyboard: getWishSceneKeyboards(),
-        },
-      })
-    } else {
-      await ctx.reply('Управление желаниями', {
-        reply_markup: {
-          inline_keyboard: getWishSceneKeyboards(),
-        },
-      })
-    }
+    await this.tryToMutateOrReplyNewContent(ctx, {
+      message: '<b>Меню желаний</b>',
+      keyboard: getWishSceneKeyboards(),
+    })
   }
 
   async showWishItem(
@@ -96,8 +89,12 @@ export class SharedService {
     return
   }
 
-  async showWishList(@Ctx() ctx: SceneContext, wishList: WishDocument[], sharedUser?: UserDocument) {
-    if (!wishList?.length) {
+  async showWishList(
+    @Ctx() ctx: SceneContext,
+    paginated: PaginationResponse<WishDocument> & { showed?: number },
+    sharedUser?: UserDocument,
+  ) {
+    if (!paginated.list?.length) {
       await ctx.telegram.editMessageText(
         ctx.chat.id,
         ctx?.msgId,
@@ -113,24 +110,45 @@ export class SharedService {
       return
     }
 
+    const { list, total = 0, showed = 0 } = paginated
+
+    const message = `${showed + list.length || list.length} из ${total} желаний`
+
     await ctx.replyWithHTML(
       sharedUser?.id
-        ? `Желания @${sharedUser.username} (Вы так же можете добавить понравившееся себе или забронировать):`
-        : '<b>Ваши желания:</b>',
+        ? `Желания @${sharedUser.username} ${message} (Вы так же можете добавить понравившееся себе или забронировать):`
+        : `<b>Ваши желания:</b> ${message}`,
     )
 
-    for await (const wish of wishList) {
+    for await (const wish of list) {
       await this.showWishItem(ctx, { wish, type: 'reply' })
     }
 
     const chat = await ctx.getChat()
     const isPrivate = chat?.type === 'private'
 
-    await ctx?.replyWithHTML('<b>Не теряйтесь, дублирую основные команды</b>', {
-      reply_markup: {
-        inline_keyboard: getMainKeyboards(isPrivate ? { webAppUrl: this.customConfigService.miniAppUrl } : undefined),
+    const last = list?.[list.length - 1]
+
+    await ctx?.replyWithHTML(
+      `<b>Не теряйтесь, дублирую основные команды</b>${total > 0 ? `\n\nВыше показано ${message}` : ''}`,
+      {
+        reply_markup: {
+          inline_keyboard: getMainKeyboards(
+            isPrivate
+              ? {
+                  webAppUrl: this.customConfigService.miniAppUrl,
+                  wishPagination: {
+                    showed: showed + list?.length,
+                    total,
+                    sharedUserId: sharedUser?.id,
+                    createdAt: time(last?.createdAt?.toDate()).toISOString(),
+                  },
+                }
+              : undefined,
+          ),
+        },
       },
-    })
+    )
   }
 
   async addWishItemByLink(

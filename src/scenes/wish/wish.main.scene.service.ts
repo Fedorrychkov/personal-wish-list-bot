@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Action, Command, Ctx, Hears, Update } from 'nestjs-telegraf'
+import { PaginatedKeyboardItem } from 'src/constants'
 import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
-import { UserDocument, UserEntity, WishEntity } from 'src/entities'
+import { UserDocument, UserEntity, WishEntity, WishStatus } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
+import { jsonParse, time } from 'src/helpers'
 import { extractUrlAndText } from 'src/helpers/url'
 import { SceneContext } from 'telegraf/typings/scenes'
 
@@ -47,13 +49,26 @@ export class WishMainSceneService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard)
   @Command(WISH_CALLBACK_DATA.getAllWishList)
-  @Action(WISH_CALLBACK_DATA.getAllWishList)
+  @Action(new RegExp(WISH_CALLBACK_DATA.getAllWishList))
+  @Action(new RegExp(WISH_CALLBACK_DATA.getAllWishListPaginatedVariant))
   async getAllWishList(@Ctx() ctx: SceneContext) {
     const userId = `${ctx.from.id}`
 
-    const items = await this.wishEntity.findAll({ userId })
+    const data = jsonParse<PaginatedKeyboardItem>((ctx?.callbackQuery as { data: string })?.data)
 
-    await this.sharedService.showWishList(ctx, items)
+    const { s: showed = 0, c: createdAt, i: definedUserId } = data?.p || {}
+
+    const [response, user] = await Promise.all([
+      this.wishEntity.findAllWithPagination({
+        userId: definedUserId || userId,
+        status: WishStatus.ACTIVE,
+        limit: 5,
+        createdAt: createdAt ? time(createdAt * 1000).toISOString() : undefined,
+      }),
+      definedUserId ? this.userEntity.get(definedUserId) : Promise.resolve(null),
+    ])
+
+    await this.sharedService.showWishList(ctx, { ...response, showed }, user)
   }
 
   @Command(new RegExp(WISH_CALLBACK_DATA.get_another_user_wish_list_by_id))
@@ -61,9 +76,12 @@ export class WishMainSceneService {
   async getAllUserWishList(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
 
-    const [items, user] = await Promise.all([this.wishEntity.findAll({ userId: id }), this.userEntity.get(id)])
+    const [response, user] = await Promise.all([
+      this.wishEntity.findAllWithPagination({ userId: id, status: WishStatus.ACTIVE, limit: 5 }),
+      this.userEntity.get(id),
+    ])
 
-    await this.sharedService.showWishList(ctx, items, user)
+    await this.sharedService.showWishList(ctx, { ...response, showed: 0 }, user)
   }
 
   @AvailableChatTypes('private')

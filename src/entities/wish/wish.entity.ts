@@ -2,6 +2,7 @@ import { CollectionReference, Timestamp } from '@google-cloud/firestore'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import firebase from 'firebase-admin'
 import { getUniqueId, time } from 'src/helpers'
+import { PaginationResponse } from 'src/types'
 
 import { WishDocument } from './wish.document'
 import { WishFilter, WishStatus } from './wish.types'
@@ -81,6 +82,31 @@ export class WishEntity {
     snapshot.forEach((doc) => list.push(doc.data()))
 
     return list
+  }
+
+  async findAllWithPagination(filter: WishFilter, withOrder = true): Promise<PaginationResponse<WishDocument>> {
+    const list: WishDocument[] = []
+    let query = this.findAllGenerator(filter)
+
+    if (withOrder) {
+      query = query.orderBy('createdAt', 'desc')
+    }
+
+    const totalSnapshot = await query.count().get()
+    const total = totalSnapshot.data().count
+
+    if (filter?.createdAt) {
+      query = query.startAfter(Timestamp.fromDate(time(filter?.createdAt).toDate()))
+    }
+
+    if (filter?.limit) {
+      query = query.limit(filter?.limit)
+    }
+
+    const snapshot = await query.get()
+    snapshot.forEach((doc) => list.push(doc.data()))
+
+    return { list, total }
   }
 
   async findAllCount(filter: WishFilter): Promise<{ count: number }> {

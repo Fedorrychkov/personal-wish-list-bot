@@ -5,4 +5,5 @@ export type UserFilter = {
 export enum UserRole {
   ADMIN = 'ADMIN_ROLE',
   USER = 'USER_ROLE',
+  ANALYTIC = 'ANALYTIC_ROLE',
 }

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Action, Ctx, Hears, On, Scene, SceneEnter } from 'nestjs-telegraf'
 import { backBtn, getMainKeyboards } from 'src/constants/keyboards'
 import { AvailableChatTypes, UserTelegrafContext } from 'src/decorator'
-import { UserDocument, UserEntity, UserRole } from 'src/entities'
+import { UserDocument, UserEntity, UserRole, validateGuardRole } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
 import { timeout } from 'src/helpers'
 import { CustomConfigService } from 'src/modules'
@@ -46,9 +46,9 @@ export class SendNewsSceneService {
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Hears(/.*/)
   async sendNewsNotificationToAllUsers(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       await ctx.scene.leave()
@@ -96,9 +96,9 @@ export class SendNewsSceneService {
     @Ctx() ctx: SceneContext,
     @UserTelegrafContext() userContext: UserDocument,
   ) {
-    const isAdmin = userContext.role.includes(UserRole.ADMIN)
+    const isAvailable = validateGuardRole(userContext.role, [UserRole.ADMIN])
 
-    if (!isAdmin) {
+    if (!isAvailable) {
       await ctx.reply('У вас нет прав на это действие')
 
       await ctx.scene.leave()

@@ -1,5 +1,5 @@
-import { WishDocument } from 'src/entities'
-import { jsonStringify } from 'src/helpers'
+import { UserRole, validateGuardRole, WishDocument } from 'src/entities'
+import { jsonStringify, time } from 'src/helpers'
 import {
   MAIN_CALLBACK_DATA,
   PAYMENT_CALLBACK_DATA,
@@ -9,7 +9,7 @@ import {
 import { WISH_CALLBACK_DATA } from 'src/scenes/wish/constants'
 import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram'
 
-import { KeyboardType } from './types'
+import { KeyboardType, PaginatedKeyboardItem } from './types'
 
 export const getMainOpenWebAppButton = (url: string, customText?: string) => ({
   text: customText || 'Mini-App (Веб версия)',
@@ -24,10 +24,10 @@ export const getAnotherUserWishListById = (userId: string, username?: string) =>
 ]
 
 export const getMainKeyboards = (options?: KeyboardType) => {
-  const { webAppUrl, isSuperAdmin } = options || {}
+  const { webAppUrl, userRoles, wishPagination } = options || {}
 
   const btns: InlineKeyboardButton[][] = [
-    [{ text: 'Управление желаниями', callback_data: WISH_CALLBACK_DATA.openWishScene }],
+    [{ text: 'Меню желаний', callback_data: WISH_CALLBACK_DATA.openWishScene }],
     [{ text: 'Поделиться по ссылке', callback_data: WISH_CALLBACK_DATA.shareWishList }],
   ]
 
@@ -39,9 +39,94 @@ export const getMainKeyboards = (options?: KeyboardType) => {
   btns.push([{ text: 'Управление кошельками', callback_data: WALLET_CALLBACK_DATA.wallets }])
   btns.push([{ text: 'Меню оплат', callback_data: PAYMENT_CALLBACK_DATA.paymentMenu }])
 
-  if (isSuperAdmin) {
+  if (userRoles && validateGuardRole(userRoles, [UserRole.ADMIN, UserRole.ANALYTIC])) {
     btns.push([{ text: 'Сервисные команды', callback_data: SUPER_ADMIN_CALLBACK_DATA.superMenu }])
   }
+
+  if (wishPagination) {
+    const { showed, total, sharedUserId, createdAt } = wishPagination
+
+    const command: PaginatedKeyboardItem = {
+      /**
+       * Не важно, так как это пагинация с учетом userId
+       * Название параметров такие, так как у ТГ есть ограничение в 76 байт на команду
+       */
+      c: WISH_CALLBACK_DATA.getAllWishListPaginatedVariant,
+      p: {
+        s: showed,
+        t: total,
+        i: sharedUserId,
+        c: time(createdAt).unix(),
+      },
+    }
+
+    if (showed < total) {
+      const hasMany = total - showed > 5
+      btns.push([
+        {
+          text: `Показать еще (${hasMany ? 5 : total - showed}${hasMany ? `/${total - showed}` : ''})`,
+          callback_data: jsonStringify(command),
+        },
+      ])
+    }
+  }
+
+  return btns
+}
+
+export const getSuperKeyboards = (options?: KeyboardType) => {
+  const { userRoles } = options || {}
+
+  const btns: InlineKeyboardButton[][] = []
+
+  if (validateGuardRole(userRoles, [UserRole.ADMIN])) {
+    btns.push([{ text: 'Update User Role To Admin', callback_data: SUPER_ADMIN_CALLBACK_DATA.updateUserRoleToUser }])
+    btns.push([
+      { text: 'Update Wish Status To Active', callback_data: SUPER_ADMIN_CALLBACK_DATA.updateWishStatusToActive },
+    ])
+    btns.push([
+      {
+        text: 'Send News Notification To All Users',
+        callback_data: SUPER_ADMIN_CALLBACK_DATA.sendNewsNotificationToAllUsers,
+      },
+    ])
+    btns.push([
+      { text: 'User Current Balances List', callback_data: SUPER_ADMIN_CALLBACK_DATA.userCurrentBalancesList },
+    ])
+    btns.push([
+      {
+        text: 'Platform Balance By Comissions',
+        callback_data: SUPER_ADMIN_CALLBACK_DATA.platformBalanceByComissions,
+      },
+    ])
+    btns.push([{ text: 'Platform Donates Balance', callback_data: SUPER_ADMIN_CALLBACK_DATA.platformDonatesBalance }])
+    btns.push([
+      {
+        text: 'Users Purchases Size And Balance',
+        callback_data: SUPER_ADMIN_CALLBACK_DATA.usersPurchasesSizeAndBalance,
+      },
+    ])
+  }
+
+  if (validateGuardRole(userRoles, [UserRole.ANALYTIC, UserRole.ADMIN])) {
+    btns.push([{ text: 'Maximum Username Length', callback_data: SUPER_ADMIN_CALLBACK_DATA.maximumUsernameLength }])
+    btns.push([
+      { text: 'Maximum Wishes In Category', callback_data: SUPER_ADMIN_CALLBACK_DATA.maximumWishesInCategory },
+    ])
+    btns.push([
+      {
+        text: 'Maximum Category Length By User',
+        callback_data: SUPER_ADMIN_CALLBACK_DATA.maximumCategoriesListLengthByUser,
+      },
+    ])
+
+    btns.push([{ text: 'Users Has Wishes In Bot', callback_data: SUPER_ADMIN_CALLBACK_DATA.usersHasWishesInBot }])
+    btns.push([
+      { text: 'Users who created any Santa Game', callback_data: SUPER_ADMIN_CALLBACK_DATA.usersCreatedSantaGame },
+    ])
+  }
+
+  btns.push([{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }])
 
   return btns
 }
@@ -49,12 +134,18 @@ export const getMainKeyboards = (options?: KeyboardType) => {
 export const getWishSceneKeyboards = () => [
   [{ text: 'Добавить по ссылке', callback_data: WISH_CALLBACK_DATA.addNewByLink }],
   [{ text: 'Добавить и заполнить позже', callback_data: WISH_CALLBACK_DATA.addNewEmptyWish }],
-  [{ text: 'Список моих желания', callback_data: WISH_CALLBACK_DATA.getAllWishList }],
+  [{ text: 'Список моих желаний', callback_data: WISH_CALLBACK_DATA.getAllWishList }],
   [{ text: 'Поделиться желаниями', callback_data: WISH_CALLBACK_DATA.shareWishList }],
   [
     {
       text: 'Найти желания по нику (@username)',
       callback_data: WISH_CALLBACK_DATA.get_another_user_wish_list_by_nickname,
+    },
+  ],
+  [
+    {
+      text: 'Меню',
+      callback_data: MAIN_CALLBACK_DATA.menu,
     },
   ],
 ]

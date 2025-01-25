@@ -9,6 +9,7 @@ export const WISH_CALLBACK_DATA = {
   editWishItemLink: 'edit_wish_item_link',
   editWishItemImageUrl: 'edit_wish_item_image_url',
   getAllWishList: 'get_all_wish_list',
+  getAllWishListPaginatedVariant: 'wpl',
   shareWishList: 'share_wish_list',
   copy_wish_item: 'copy_wish_item',
   bookWishItem: 'book_wish_item',
