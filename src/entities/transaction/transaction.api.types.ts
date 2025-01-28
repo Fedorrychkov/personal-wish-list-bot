@@ -41,6 +41,23 @@ export type TransactionPayload = {
   message: string
   userId?: string
   isAnonymous?: boolean
+  targetWalletAddress?: string
+  serviceFee?: string
+  finalAmountToGet?: {
+    amount?: string
+    currency?: AnyCurrency
+  }
+  scanUrl?: string
+  txScanUrl?: string
+  addressScanUrl?: string
+  conversionCurrency?: string
+  conversionAmount?: string
+  conversionRate?: {
+    fromCurrency?: string
+    toCurrency?: string
+    rate?: string
+    amount?: string
+  }
 }
 
 export type Purchase = {
@@ -54,4 +71,10 @@ export type Purchase = {
 export type PurchaseFilter = {
   wishId?: string
   santaGameId?: string
+}
+
+export type WithdrawalDto = {
+  amount?: string
+  currency: AnyCurrency
+  targetWalletAddress?: string
 }

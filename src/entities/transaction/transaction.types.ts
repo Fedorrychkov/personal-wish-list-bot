@@ -26,6 +26,8 @@ export enum TransactionPayloadType {
   INVITEE_BONUS = 'invitee_bonus',
   WITH_REFFERAL_COMISSION = 'with_refferal_comission',
   REFFERAL_BONUS = 'refferal_bonus',
+  WITHDRAWAL_TO_EXTERNAL_WALLET = 'withdrawal_to_external_wallet',
+  CONVERT_BALANCE = 'convert_balance',
 }
 
 export enum TransactionType {

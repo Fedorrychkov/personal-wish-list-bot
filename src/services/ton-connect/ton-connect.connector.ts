@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import TonConnect from '@tonconnect/sdk'
+import { EventEmitter } from 'events'
 import { NodeEventDispatcher } from 'src/utils/event'
 
 import { TonConnectStorage } from './ton-connect.storage'
+
+EventEmitter.setMaxListeners(30)
 
 type StoredConnectorData = {
   connector: TonConnect

@@ -17,6 +17,7 @@ import {
   TransactionBalanceItem,
   TransactionBalanceTopup,
   TransactionBalanceTopupResponse,
+  TransactionBlockchainProvider,
   transactionCurrencyLabels,
   TransactionDocument,
   TransactionEntity,
@@ -29,13 +30,16 @@ import {
   TransactionType,
   UserDocument,
   UserEntity,
+  WithdrawalDto,
 } from 'src/entities'
 import { ERROR_CODES } from 'src/errors'
-import { getUniqueId, jsonStringify, time, truncate } from 'src/helpers'
+import { getUniqueId, jsonParse, jsonStringify, time, truncate } from 'src/helpers'
 import { TelegrafCustomService } from 'src/services'
 import { PaginationResponse, TgInitUser } from 'src/types'
 
 import { CustomConfigService } from '../config'
+import { CurrencyService } from '../currency'
+import { PAYMENT_PROVIDER, PaymentProvidersService } from '../payment-providers'
 import { computedBalance } from './helper'
 import { TransactionPurchaseService } from './transaction.purchase.service'
 
@@ -49,6 +53,8 @@ export class TransactionService {
     private readonly telegrafCustomService: TelegrafCustomService,
     private readonly customConfigService: CustomConfigService,
     private readonly transactionPurchaseService: TransactionPurchaseService,
+    private readonly paymentProvidersService: PaymentProvidersService,
+    private readonly currencyService: CurrencyService,
   ) {}
 
   public async getList(
@@ -823,6 +829,319 @@ export class TransactionService {
       })
 
       throw error
+    }
+  }
+
+  async getWithdrawBalance(user: TgInitUser) {
+    const balance = await this.balance({ id: user?.id })
+
+    const hasBalance = balance?.some((item) => !Number.isNaN(Number(item.amount)) && Number(item.amount) > 0)
+    const defaultTransferFee = await this.paymentProvidersService.getDefaultTransferFee(PAYMENT_PROVIDER.TON)
+
+    const balancesWithConversionInfo = await Promise.all(
+      balance.map(async (item) => {
+        const conversionRate = await this.currencyService.getRate(item.currency, 'TON')
+
+        return {
+          amount: truncate(Number(item.amount), 4),
+          currency: item.currency,
+          conversionRate,
+          conversionAmount: truncate(Number(item.amount) * conversionRate, 4),
+        }
+      }),
+    )
+
+    return {
+      hasBalance,
+      defaultTransferFee,
+      balancesWithConversionInfo,
+    }
+  }
+
+  async getAmountWithFees(
+    dto: WithdrawalDto,
+    { defaultTransferFee }: { defaultTransferFee?: { totalFee: number; currency: string } },
+  ) {
+    const { amount } = dto
+
+    const finalDefaultTransferFee =
+      defaultTransferFee || (await this.paymentProvidersService.getDefaultTransferFee(PAYMENT_PROVIDER.TON))
+
+    const serviceFee = Number(amount) * (TRANSACTION_WITHDRAW_COMISSION / 100)
+
+    const finalAmountToGet = Number(amount) - (Number(finalDefaultTransferFee.totalFee) + serviceFee)
+
+    return {
+      /**
+       * service fee for withdrawal
+       */
+      serviceFee: String(serviceFee),
+      /**
+       * fixed transfer fee by provider
+       */
+      defaultTransferFee: finalDefaultTransferFee,
+      /**
+       * Final get amount by user
+       */
+      finalAmountToGet: {
+        amount: String(truncate(finalAmountToGet, 4)),
+        currency: 'TON',
+      },
+    }
+  }
+
+  async checkingWithdrawal(user: TgInitUser, dto: WithdrawalDto) {
+    const { currency, amount } = dto
+    const balance = await this.balance({ id: user.id })
+
+    const balanceItem = balance?.find((item) => item.currency === currency)
+    const defaultTransferFee = await this.paymentProvidersService.getDefaultTransferFee(PAYMENT_PROVIDER.TON)
+    const conversionRate = await this.currencyService.getRate(currency, 'TON')
+    const conversionCurrency = 'TON'
+
+    const finalAmount = amount || balanceItem?.amount
+
+    const conversionAmount = truncate(Number(finalAmount) * conversionRate, 4)
+    const isNotEnoughBalance = !balanceItem || Number(conversionAmount) > Number(balanceItem?.amount)
+    const minimalWithdrawalAmount = defaultTransferFee.totalFee * 2
+
+    if (isNotEnoughBalance) {
+      throw new BadRequestException({
+        code: ERROR_CODES.transaction.codes.TRANSACTION_NOT_ENOUGH_BALANCE,
+        message: ERROR_CODES.transaction.messages.TRANSACTION_NOT_ENOUGH_BALANCE,
+      })
+    }
+
+    if (Number(conversionAmount) < minimalWithdrawalAmount) {
+      throw new BadRequestException({
+        code: ERROR_CODES.transaction.codes.TRANSACTION_NOT_ENOUGH_BALANCE_FOR_MINIMAL_WITHDRAWAL,
+        message: ERROR_CODES.transaction.messages.TRANSACTION_NOT_ENOUGH_BALANCE_FOR_MINIMAL_WITHDRAWAL?.replace(
+          '{minWithdrawalAmount}',
+          String(truncate(defaultTransferFee.totalFee * 2, 4)),
+        ).replace('{currency}', `${transactionCurrencyLabels[conversionCurrency]} (${conversionCurrency})`),
+      })
+    }
+
+    return {
+      /**
+       * balance amount
+       */
+      amount: finalAmount,
+      /**
+       * balance currency
+       */
+      currency,
+      /**
+       * fixed fee in withdrawal currency
+       */
+      defaultTransferFee,
+      /**
+       * withdrawal target amount
+       */
+      conversionAmount: String(truncate(conversionAmount, 4)),
+      /**
+       * withdrawal target currency
+       */
+      conversionCurrency,
+      conversionRate,
+    }
+  }
+
+  async withdrawal(user: TgInitUser, dto: WithdrawalDto) {
+    const logKey = `${getUniqueId()}-withdrawal`
+
+    if (!dto.targetWalletAddress) {
+      throw new BadRequestException({
+        code: ERROR_CODES.transaction.codes.TRANSACTION_TARGET_WALLET_ADDRESS_EMPTY,
+        message: ERROR_CODES.transaction.messages.TRANSACTION_TARGET_WALLET_ADDRESS_EMPTY,
+      })
+    }
+
+    const { amount, defaultTransferFee, currency, conversionAmount, conversionCurrency, conversionRate } =
+      await this.checkingWithdrawal(user, {
+        currency: dto.currency,
+        amount: dto.amount,
+      })
+
+    const { finalAmountToGet, serviceFee } = await this.getAmountWithFees(
+      {
+        currency: conversionCurrency,
+        amount: conversionAmount,
+      },
+      { defaultTransferFee },
+    )
+
+    this.logger.debug({
+      amount,
+      defaultTransferFee,
+      currency,
+      finalAmountToGet,
+      serviceFee,
+      conversionAmount,
+      conversionCurrency,
+    })
+
+    const depositConversionCurrencyTransactionId = getUniqueId()
+    const withdrawTargetCurrencyTransactionId = getUniqueId()
+
+    if (currency !== conversionCurrency) {
+      const withdrawSourceCurrencyTransaction = this.transactionEntity.getValidProperties(
+        {
+          userId: user?.id?.toString(),
+          type: TransactionType.USER_WITHDRAW,
+          amount,
+          currency: currency,
+          provider: TransactionProvider.INTERNAL,
+          status: TransactionStatus.CONFIRMED,
+          childrenTransactionId: depositConversionCurrencyTransactionId,
+          payload: jsonStringify<TransactionPayload>({
+            message: 'Конвертация баланса',
+            type: TransactionPayloadType.CONVERT_BALANCE,
+            conversionRate: {
+              fromCurrency: currency,
+              toCurrency: conversionCurrency,
+              rate: String(truncate(conversionRate, 4)),
+              amount: conversionAmount,
+            },
+          }),
+        },
+        false,
+        logKey,
+      )
+
+      const depositSourceCurrencyTransaction = this.transactionEntity.getValidProperties(
+        {
+          id: depositConversionCurrencyTransactionId,
+          userId: user?.id?.toString(),
+          type: TransactionType.USER_TOPUP,
+          amount: conversionAmount,
+          currency: conversionCurrency,
+          provider: TransactionProvider.INTERNAL,
+          status: TransactionStatus.CONFIRMED,
+          parentTransactionId: withdrawSourceCurrencyTransaction.id,
+          childrenTransactionId: withdrawTargetCurrencyTransactionId,
+          payload: jsonStringify<TransactionPayload>({
+            message: 'Конвертация баланса',
+            type: TransactionPayloadType.CONVERT_BALANCE,
+            conversionRate: {
+              fromCurrency: currency,
+              toCurrency: conversionCurrency,
+              rate: String(truncate(conversionRate, 4)),
+              amount: conversionAmount,
+            },
+          }),
+        },
+        false,
+        logKey,
+      )
+
+      await this.transactionEntity.createOrUpdate(withdrawSourceCurrencyTransaction)
+      await this.transactionEntity.createOrUpdate(depositSourceCurrencyTransaction)
+
+      this.logger.log(`${logKey} - Payload deposit and withdraw source currency transaction`, {
+        withdrawSourceCurrencyTransaction,
+        depositSourceCurrencyTransaction,
+      })
+    }
+
+    let payloadFinalUserWithdrawalTransaction = this.transactionEntity.getValidProperties(
+      {
+        id: withdrawTargetCurrencyTransactionId,
+        userId: user?.id?.toString(),
+        type: TransactionType.USER_WITHDRAW,
+        /**
+         * Оставляем сумму без комиссии, так как мы именно столько списываем с пользователя
+         */
+        parentTransactionId: depositConversionCurrencyTransactionId,
+        amount: conversionAmount,
+        currency: conversionCurrency,
+        provider: TransactionProvider.BLOCKCHAIN,
+        status: TransactionStatus.CREATED,
+        blockchainProvider: TransactionBlockchainProvider.TON,
+        comissionPercent: TRANSACTION_WITHDRAW_COMISSION,
+        actionAddress: null,
+        providerInvoiceId: null,
+        comissionAmount: serviceFee,
+        comissionCurrency: conversionCurrency,
+        refundExpiredAt: Timestamp.fromDate(time().toDate()),
+        payload: jsonStringify<TransactionPayload>({
+          message:
+            'Вывод создан, может занять до 24 часов. Если транзакция так и не завершилась или завершилась с ошибкой, то обратитесь в поддержку.',
+          type: TransactionPayloadType.WITHDRAWAL_TO_EXTERNAL_WALLET,
+          targetWalletAddress: dto.targetWalletAddress,
+          serviceFee,
+          finalAmountToGet: {
+            amount: String(truncate(Number(finalAmountToGet.amount), 4)),
+            currency: finalAmountToGet.currency,
+          },
+          conversionCurrency,
+          conversionAmount,
+        }),
+      },
+      false,
+      logKey,
+    )
+
+    this.logger.log(`${logKey} - Payload final user withdrawal transaction`, {
+      payloadFinalUserWithdrawalTransaction,
+    })
+
+    try {
+      const response = await this.paymentProvidersService.transferFromWithdrawalWalletToTargetWallet(
+        PAYMENT_PROVIDER.TON,
+        {
+          targetWalletAddress: dto.targetWalletAddress,
+          amount: String(truncate(Number(finalAmountToGet.amount), 4)),
+          currency: finalAmountToGet.currency,
+          comment: `Withdrawal balance from @${this.customConfigService.tgBotUsername}`,
+          logKey,
+        },
+      )
+
+      this.logger.debug(`${logKey} - Response from payment provider`, response)
+
+      const payload = jsonParse<TransactionPayload>(payloadFinalUserWithdrawalTransaction.payload)
+
+      payloadFinalUserWithdrawalTransaction = this.transactionEntity.getValidProperties(
+        {
+          ...payloadFinalUserWithdrawalTransaction,
+          actionAddress: response.actionAddress,
+          status: TransactionStatus.PENDING,
+          providerInvoiceId: response.hash,
+          payload: jsonStringify<TransactionPayload>({
+            ...payload,
+            message: 'Вывод успешно отправлен в блокчейн, пожалуйста, дождитесь завершения транзакции',
+            txScanUrl: response.scanUrl,
+            addressScanUrl: `${response.rootScanUrl}/address/${dto.targetWalletAddress}`,
+          }),
+        },
+        false,
+        logKey,
+      )
+
+      this.logger.debug(`${logKey} - Final user withdrawal transaction`, payloadFinalUserWithdrawalTransaction)
+      await this.transactionEntity.createOrUpdate(payloadFinalUserWithdrawalTransaction)
+
+      return {
+        isError: false,
+        ...response,
+        finalAmountToGet,
+        conversionCurrency,
+      }
+    } catch (error) {
+      this.logger.error(
+        `${logKey} - Error with transfer from withdrawal wallet to target wallet, but save transaction in created status`,
+        error,
+        payloadFinalUserWithdrawalTransaction,
+      )
+      await this.transactionEntity.createOrUpdate(payloadFinalUserWithdrawalTransaction)
+
+      return {
+        isError: true,
+        scanUrl: null,
+        finalAmountToGet,
+        conversionCurrency,
+      }
     }
   }
 }

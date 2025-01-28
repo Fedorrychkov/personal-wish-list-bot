@@ -35,6 +35,7 @@ export const MAIN_CALLBACK_DATA = {
   menu: 'menu',
   help: 'help',
   refferalSystem: 'refferal_system',
+  myPlatformBalance: 'my_platform_balance',
 }
 
 export const SUPER_ADMIN_CALLBACK_DATA = {
@@ -67,6 +68,13 @@ export const PAYMENT_CALLBACK_DATA = {
   userTopupWithXtr: 'user_topup_with_xtr',
   userTopupWithTon: 'user_topup_with_ton',
   refundTransaction: 'refund_transaction',
+}
+
+export const WITHDRAWAL_CALLBACK_DATA = {
+  runWithdrawal: 'run_withdrawal',
+  userWithdrawWithTon: 'user_withdraw_with_ton',
+  userWithdrawWithTonApprove: 'user_withdraw_with_ton_approve',
+  rates: 'rates',
 }
 
 export const WALLET_CALLBACK_DATA = {

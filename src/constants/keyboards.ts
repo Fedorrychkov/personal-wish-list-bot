@@ -43,6 +43,8 @@ export const getMainKeyboards = (options?: KeyboardType) => {
     btns.push([{ text: 'Сервисные команды', callback_data: SUPER_ADMIN_CALLBACK_DATA.superMenu }])
   }
 
+  btns.push([{ text: 'Внутренний баланс', callback_data: MAIN_CALLBACK_DATA.myPlatformBalance }])
+
   if (wishPagination) {
     const { showed, total, sharedUserId, createdAt } = wishPagination
 

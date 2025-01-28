@@ -1,6 +1,10 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
 
-import { BlockchainTxResponse, GetTransactionOptions } from './payment-provider.interfaces'
+import {
+  BlockchainTxResponse,
+  GetTransactionOptions,
+  TransferFromWithdrawalWalletToTargetWalletOptions,
+} from './payment-provider.interfaces'
 import { PAYMENT_PROVIDER } from './payment-providers.types'
 import { TonProviderService } from './ton/ton-provider.service'
 
@@ -51,5 +55,20 @@ export class PaymentProvidersService {
     const providerService = await this.getProvider(provider)
 
     return providerService.getTransaction(txHash, options)
+  }
+
+  public async transferFromWithdrawalWalletToTargetWallet(
+    provider: PAYMENT_PROVIDER | string,
+    options: TransferFromWithdrawalWalletToTargetWalletOptions,
+  ) {
+    const providerService = await this.getProvider(provider)
+
+    return providerService.trasferFromWithdrawalWalletToTargetWallet(options)
+  }
+
+  public async getDefaultTransferFee(provider: PAYMENT_PROVIDER | string) {
+    const providerService = await this.getProvider(provider)
+
+    return providerService.getDefaultTransferFee()
   }
 }

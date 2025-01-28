@@ -13,14 +13,14 @@ import {
   UserEntity,
 } from 'src/entities'
 import { ChatTelegrafGuard, UserTelegrafGuard, UseSafeGuards } from 'src/guards'
-import { time } from 'src/helpers'
+import { time, truncate } from 'src/helpers'
 import { CustomConfigService, TransactionService } from 'src/modules'
 import { WalletService } from 'src/modules/wallet'
 import { SuccessfulPaymentType } from 'src/types'
 import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../shared'
-import { MAIN_CALLBACK_DATA, PAYMENT_CALLBACK_DATA, WALLET_CALLBACK_DATA } from './constants'
+import { MAIN_CALLBACK_DATA, PAYMENT_CALLBACK_DATA, WALLET_CALLBACK_DATA, WITHDRAWAL_CALLBACK_DATA } from './constants'
 
 @Update()
 @Injectable()
@@ -33,6 +33,40 @@ export class MainPaymentService {
     private readonly sharedService: SharedService,
     private readonly walletService: WalletService,
   ) {}
+
+  @Command(MAIN_CALLBACK_DATA.myPlatformBalance)
+  @Action(MAIN_CALLBACK_DATA.myPlatformBalance)
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  async myPlatformBalance(@Ctx() ctx: SceneContext) {
+    const balance = await this.transactionService.balance({ id: ctx.from.id })
+
+    const hasBalance = balance?.some((item) => !Number.isNaN(Number(item.amount)) && Number(item.amount) > 0)
+
+    const balanceMessage = `
+<b>Внутренний баланс</b>
+
+${balance
+  .map((item) => `${truncate(item.amount, 4)} ${transactionCurrencyLabels[item.currency]} (${item.currency})`)
+  .join('\n')}
+
+Вы можете как пополнять баланс, так и выводить средства.
+`
+
+    const keyboard = [
+      [{ text: 'Меню оплат', callback_data: PAYMENT_CALLBACK_DATA.paymentMenu }],
+      [{ text: 'Основное меню', callback_data: MAIN_CALLBACK_DATA.menu }],
+    ]
+
+    if (hasBalance) {
+      keyboard.push([{ text: 'Вывод баланса', callback_data: WITHDRAWAL_CALLBACK_DATA.runWithdrawal }])
+    }
+
+    await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
+      message: hasBalance ? balanceMessage : 'Внутренний баланс пуст, хотите пополнить?',
+      keyboard,
+    })
+  }
 
   @Command(PAYMENT_CALLBACK_DATA.paySupport)
   @Action(PAYMENT_CALLBACK_DATA.paySupport)
@@ -128,6 +162,7 @@ export class MainPaymentService {
       keyboard: [
         [{ text: 'Донаты', callback_data: PAYMENT_CALLBACK_DATA.donates }],
         [{ text: 'Пополнение баланса', callback_data: PAYMENT_CALLBACK_DATA.topupBalance }],
+        [{ text: 'Вывод баланса', callback_data: WITHDRAWAL_CALLBACK_DATA.runWithdrawal }],
         [{ text: 'Про оплаты', callback_data: PAYMENT_CALLBACK_DATA.paySupport }],
         [{ text: 'Меню', callback_data: MAIN_CALLBACK_DATA.menu }],
       ],
@@ -228,7 +263,7 @@ export class MainPaymentService {
           ctx?.chat?.id,
           amount,
           'deposit',
-          'donate to developer by user',
+          `donate to developer by user @${this.customConfigService.tgBotUsername}`,
           async (walletInfo, address, isTestnet) => {
             let link = ''
 
@@ -347,7 +382,7 @@ export class MainPaymentService {
           ctx?.chat?.id,
           amount,
           'deposit',
-          'user topup balance',
+          `user topup balance by user @${this.customConfigService.tgBotUsername}`,
           async (walletInfo, address, isTestnet) => {
             let link = ''
 
