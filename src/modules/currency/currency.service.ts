@@ -13,10 +13,10 @@ export class CurrencyService {
   private readonly client: AxiosInstance
   private readonly RATES: Record<string, { rate: number; currency: AnyCurrency }> = {
     /**
-     * 1 XTR = 0.019 USD
+     * 1 XTR = 0.012 USD
      */
     XTR_USD: {
-      rate: 0.019,
+      rate: 0.012,
       currency: 'USD',
     },
     TON_USD: {
@@ -76,7 +76,7 @@ export class CurrencyService {
       const tonUsdRate = response.data?.[this.CURRENCY_MAP['TON']]?.[this.CURRENCY_MAP['USD']] // 5.07 USD
 
       // Получаем курс XTR/TON
-      const xtrTonRate = xtrUsdRate / tonUsdRate // 0.019 / 5.07 ≈ 0.00375
+      const xtrTonRate = xtrUsdRate / tonUsdRate
 
       /**
        * Мы не сохраняем курс, так как он может меняться каждый запрос
