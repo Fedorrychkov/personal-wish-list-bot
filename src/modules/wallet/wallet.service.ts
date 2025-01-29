@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { beginCell } from '@ton/ton'
 import { CHAIN, toUserFriendlyAddress, Wallet, WalletInfo } from '@tonconnect/sdk'
 import * as QRCode from 'qrcode'
+import { ERROR_CODES } from 'src/errors'
 import { TonConnectService, TonConnectWallets } from 'src/services'
 
 import { CustomConfigService } from '../config'
@@ -113,16 +114,46 @@ export class WalletService {
       }
     }
 
-    const nanos = await this.paymentProvidersService.getNanos(PAYMENT_PROVIDER.TON, amount)
-
     const walletInfo = await this.tonConnectWallets.getWalletInfo(connector?.wallet?.device?.appName)
 
-    const body = beginCell()
-      .storeUint(0, 32) // write 32 zero bits to indicate that a text comment will follow
-      .storeStringTail(txMessage) // write our text comment
-      .endCell()
+    if (type === 'withdraw') {
+      const result = await this.paymentProvidersService.transferFromWithdrawalWalletToTargetWallet(
+        PAYMENT_PROVIDER.TON,
+        {
+          targetWalletAddress: connector.wallet.account.address,
+          amount: amount,
+          currency: 'TON',
+          comment: txMessage,
+        },
+      )
+
+      // requestSent?.(walletInfo, connector.wallet.account.address, connector.wallet.account.chain === CHAIN.TESTNET)
+
+      const walletAddress = toUserFriendlyAddress(
+        connector.wallet.account.address,
+        connector.wallet.account.chain === CHAIN.TESTNET,
+      )
+
+      return {
+        isError: false,
+        message: 'Транзакция отправлена',
+        transaction: {
+          hash: result.hash,
+          scanUrl: result.scanUrl,
+          chain: connector.wallet.account.chain,
+          walletAddress,
+        },
+      }
+    }
 
     if (type === 'deposit') {
+      const nanos = await this.paymentProvidersService.getNanos(PAYMENT_PROVIDER.TON, amount)
+
+      const body = beginCell()
+        .storeUint(0, 32) // write 32 zero bits to indicate that a text comment will follow
+        .storeStringTail(txMessage) // write our text comment
+        .endCell()
+
       const transaction = await connector.sendTransaction(
         {
           /**
@@ -169,6 +200,11 @@ export class WalletService {
         },
       }
     }
+
+    throw new BadRequestException({
+      code: ERROR_CODES.wallet.codes.NOT_IMPLEMENTED,
+      message: ERROR_CODES.wallet.messages.NOT_IMPLEMENTED,
+    })
   }
 
   public async showConnectedWallet(chatId: number) {

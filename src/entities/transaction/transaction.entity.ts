@@ -163,7 +163,6 @@ export class TransactionEntity {
       comissionAmount: document.comissionAmount || null,
       comissionCurrency: document.comissionCurrency || null,
       provider: document.provider || null,
-      blockchain: document.blockchain || null,
       providerInvoiceId: document.providerInvoiceId || null,
       parentTransactionId: document.parentTransactionId || null,
       childrenTransactionId: document.childrenTransactionId || null,

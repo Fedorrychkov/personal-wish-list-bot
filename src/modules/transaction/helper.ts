@@ -1,5 +1,5 @@
 import { TransactionBalanceItem, TransactionDocument, TransactionType } from 'src/entities'
-import { time } from 'src/helpers'
+import { time, truncate } from 'src/helpers'
 
 export const computedBalance = (
   acc: TransactionBalanceItem[],
@@ -32,11 +32,13 @@ export const computedBalance = (
    * На первом шаге формируем первую запись баланса, или оставляем пустой массив
    */
   if (!acc?.length && (isAvailableTopup || isAvailableWithdraw)) {
-    acc.push(
-      isAvailableTopup
-        ? { amount: balanceAmount, currency: balanceCurrency }
-        : { amount: String(Number(balanceAmount) * -1), currency: balanceCurrency },
-    )
+    if (isAvailableTopup) {
+      acc.push({ amount: balanceAmount, currency: balanceCurrency })
+    }
+
+    if (isAvailableWithdraw) {
+      acc.push({ amount: String(truncate(Number(balanceAmount) * 1, 6)), currency: balanceCurrency })
+    }
 
     return acc
   }
@@ -50,20 +52,26 @@ export const computedBalance = (
   if (isAvailableTopup || isAvailableWithdraw) {
     const newAcc = [...(filteredBalances || [])]
 
-    newAcc.push(
-      isAvailableTopup
-        ? {
-            amount: String(Number(balanceByCurrency?.amount || 0) + Number(balanceAmount || 0)),
-            currency: balanceByCurrency.currency,
-          }
-        : {
-            /**
-             * Для вывода, мы делаем сумму позитивной и отнимаем от нее сумму из транзакции вывода и снова делаем отрицательной
-             */
-            amount: String(Number(balanceByCurrency?.amount || 0) - Number(balanceAmount || 0)),
-            currency: balanceByCurrency.currency || '',
-          },
-    )
+    if (isAvailableTopup) {
+      newAcc.push({
+        amount: String(
+          truncate(truncate(Number(balanceByCurrency?.amount || 0), 6) + truncate(Number(balanceAmount || 0), 6), 6),
+        ),
+        currency: balanceByCurrency.currency,
+      })
+    }
+
+    if (isAvailableWithdraw) {
+      newAcc.push({
+        /**
+         * Для вывода, мы делаем сумму позитивной и отнимаем от нее сумму из транзакции вывода и снова делаем отрицательной
+         */
+        amount: String(
+          truncate(truncate(Number(balanceByCurrency?.amount || 0), 6) - truncate(Number(balanceAmount || 0), 6), 6),
+        ),
+        currency: balanceByCurrency.currency || '',
+      })
+    }
 
     return newAcc
   }

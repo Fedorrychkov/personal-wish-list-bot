@@ -28,7 +28,13 @@ import { SceneContext } from 'telegraf/typings/scenes'
 
 import { SharedService } from '../shared'
 import { WISH_CALLBACK_DATA } from './../wish/constants'
-import { botWelcomeCommandsText, botWelcomeUserNameText, MAIN_CALLBACK_DATA, START_PAYLOAD_KEYS } from './constants'
+import {
+  botWelcomeCommandsText,
+  botWelcomeUserNameText,
+  MAIN_CALLBACK_DATA,
+  START_PAYLOAD_KEYS,
+  WITHDRAWAL_CALLBACK_DATA,
+} from './constants'
 
 @Update()
 @Injectable()
@@ -424,7 +430,7 @@ export class MainSceneService {
     await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
       message: `<b>Реферальная система</b>
 
-Вы можете зарабатывать внутри бота, приглашая новых пользователей.
+Вы можете зарабатывать внутри бота приглашая новых пользователей!
 
 <b>Условия реферальной системы</b>:
 - Если кто-то запустит бота по вашей ссылке, вы получите ${TRANSACTION_NEW_USER_REFFERER_XTR_AMOUNT} ${
@@ -434,7 +440,9 @@ export class MainSceneService {
 - Приглашенный пользователь получает на баланс ${TRANSACTION_NEW_USER_XTR_AMOUNT} ${transactionCurrencyLabels['XTR']}
 
 <b>Вывод средств</b>:
-- На данный момент, автоматический вывод средств не поддерживается, однако, вы можете вывести средства вручную, обратившись к разработчику бота
+- Выводы доступны в валюте ${transactionCurrencyLabels['TON']} (TON), вы всегда можете произвести вывод из бота /${
+        WITHDRAWAL_CALLBACK_DATA.runWithdrawal
+      }
 - Так как депозиты можно возвращать в течении <b>21 дня</b>, то и вывод реферальных средств можно будет осуществить лишь после прохождения этого срока
 
 <i>Условия реферальной системы могут быть изменены в любой момент, без предварительного уведомления. Следите за обновлениями в боте.</i>

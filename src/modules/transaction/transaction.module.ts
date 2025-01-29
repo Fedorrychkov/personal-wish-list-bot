@@ -3,6 +3,7 @@ import { TransactionEntity } from 'src/entities'
 import { TelegrafCustomModule } from 'src/services'
 
 import { CustomConfigModule } from '../config'
+import { CurrencyModule } from '../currency'
 import { GameModule } from '../games'
 import { PaymentProvidersModule } from '../payment-providers'
 import { UserModule } from '../user'
@@ -13,7 +14,15 @@ import { TransactionSchedule } from './transaction.schedule'
 import { TransactionService } from './transaction.service'
 
 @Module({
-  imports: [TelegrafCustomModule, CustomConfigModule, WishModule, GameModule, UserModule, PaymentProvidersModule],
+  imports: [
+    TelegrafCustomModule,
+    CustomConfigModule,
+    WishModule,
+    GameModule,
+    UserModule,
+    PaymentProvidersModule,
+    CurrencyModule,
+  ],
   controllers: [TransactionController],
   providers: [TransactionEntity, TransactionService, TransactionPurchaseService, TransactionSchedule],
   exports: [TransactionEntity, TransactionService],

@@ -25,7 +25,6 @@ export class TransactionDocument {
   blockchainProvider?: TransactionBlockchainProvider
   actionAddress?: string | null
   chain?: string
-  blockchain?: string | null
   amount: string
   currency: AnyCurrency
   providerInvoiceId?: string
