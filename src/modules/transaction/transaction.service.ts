@@ -152,7 +152,7 @@ export class TransactionService {
 
       const isAvailableAfterRefundableDateLimit = transaction?.refundExpiredAt
         ? time(transaction?.refundExpiredAt?.toDate()).isAfter(time())
-        : true
+        : false
 
       if (isAvailableTopup && !isAvailableAfterRefundableDateLimit && transaction?.type === TransactionType.REFFERAL) {
         return acc
@@ -162,22 +162,25 @@ export class TransactionService {
        * На первом шаге формируем первую запись баланса, или оставляем пустой массив
        */
       if (!acc?.length && isAvailableTopup) {
-        acc.push({ amount: balanceAmount, currency: balanceCurrency })
+        acc.push({ amount: String(truncate(Number(balanceAmount || 0), 6)), currency: balanceCurrency })
 
         return acc
       }
 
-      const balanceByCurrency = acc.find((item) => item?.currency === balanceCurrency)
+      const balanceByCurrency = acc.find((item) => item?.currency === balanceCurrency) || {
+        amount: '0',
+        currency: balanceCurrency,
+      }
       const filteredBalances = acc.filter((item) => item?.currency !== balanceCurrency)
-
-      // TODO: нужно REFERRAL проверять на срок refundExpiredAt, показываем на балансе, только если срок возврата истек
 
       if (isAvailableTopup) {
         const newAcc = [...(filteredBalances || [])]
 
         newAcc.push({
-          amount: String(Number(balanceByCurrency.amount) + Number(balanceAmount)),
-          currency: balanceByCurrency.currency,
+          amount: String(
+            truncate(truncate(Number(balanceByCurrency?.amount || 0), 6) + truncate(Number(balanceAmount || 0), 6), 6),
+          ),
+          currency: balanceByCurrency?.currency || '',
         })
 
         return newAcc
@@ -330,13 +333,13 @@ export class TransactionService {
     const logKey = `${getUniqueId()}-createWithPartialDto`
     const isComissionType = withComission && [TransactionType.USER_TOPUP].includes(dto?.type)
 
-    const comissionPercent = isComissionType ? TRANSACTION_DEPOSIT_COMISSION : 0
+    const comissionPercent = isComissionType ? TRANSACTION_DEPOSIT_COMISSION[dto.currency] : 0
     const amount = isComissionType
-      ? String(Number(dto.amount || 0) - Number(dto.amount || 0) * TRANSACTION_DEPOSIT_COMISSION_NUMBER)
+      ? String(Number(dto.amount || 0) - Number(dto.amount || 0) * TRANSACTION_DEPOSIT_COMISSION_NUMBER[dto.currency])
       : dto.amount
     const currency = dto.currency
     const comissionAmount = isComissionType
-      ? String(Number(dto.amount || 0) * TRANSACTION_DEPOSIT_COMISSION_NUMBER)
+      ? String(Number(dto.amount || 0) * TRANSACTION_DEPOSIT_COMISSION_NUMBER[dto.currency])
       : '0'
 
     const depositTransactionId = getUniqueId()
@@ -393,7 +396,8 @@ export class TransactionService {
             id: reffererBonusTransactionId,
             userId: reffererUser?.id,
             parentTransactionId: depositTransactionId,
-            refundExpiredAt: Timestamp.fromDate(time().add(21, 'day').add(1, 'hour').toDate()),
+            refundExpiredAt:
+              currency === 'TON' ? null : Timestamp.fromDate(time().add(21, 'day').add(1, 'hour').toDate()),
             status: TransactionStatus.CONFIRMED,
             provider: TransactionProvider.INTERNAL,
             type: TransactionType.REFFERAL,
@@ -903,7 +907,7 @@ export class TransactionService {
 
     const conversionAmount = truncate(Number(finalAmount) * conversionRate, 4)
     const isNotEnoughBalance = !balanceItem || Number(conversionAmount) > Number(balanceItem?.amount)
-    const minimalWithdrawalAmount = defaultTransferFee.totalFee * 2
+    const minimalWithdrawalAmount = defaultTransferFee.totalFee
 
     if (isNotEnoughBalance) {
       throw new BadRequestException({
@@ -917,7 +921,7 @@ export class TransactionService {
         code: ERROR_CODES.transaction.codes.TRANSACTION_NOT_ENOUGH_BALANCE_FOR_MINIMAL_WITHDRAWAL,
         message: ERROR_CODES.transaction.messages.TRANSACTION_NOT_ENOUGH_BALANCE_FOR_MINIMAL_WITHDRAWAL?.replace(
           '{minWithdrawalAmount}',
-          String(truncate(defaultTransferFee.totalFee * 2, 4)),
+          String(truncate(defaultTransferFee.totalFee, 4)),
         ).replace('{currency}', `${transactionCurrencyLabels[conversionCurrency]} (${conversionCurrency})`),
       })
     }

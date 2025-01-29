@@ -1,5 +1,15 @@
-export const TRANSACTION_DEPOSIT_COMISSION = 10
-export const TRANSACTION_DEPOSIT_COMISSION_NUMBER = 0.1
+import { AnyCurrency } from 'src/types'
+
+export const TRANSACTION_DEPOSIT_COMISSION: Record<AnyCurrency, number> = {
+  XTR: 10,
+  TON: 0.5,
+}
+
+export const TRANSACTION_DEPOSIT_COMISSION_NUMBER: Record<AnyCurrency, number> = {
+  XTR: 0.1,
+  TON: 0.005,
+}
+
 export const TRANSACTION_WITHDRAW_COMISSION = 15
 export const TRANSACTION_WITHDRAW_COMISSION_NUMBER = 0.15
 export const TRANSACTION_BOOKED_USERS_XTR_AMOUNT = 150

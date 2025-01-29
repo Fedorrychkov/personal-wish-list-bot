@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Wallet } from '@tonconnect/sdk'
 import * as fs from 'fs'
-import { Action, Ctx, Update } from 'nestjs-telegraf'
+import { Action, Command, Ctx, Update } from 'nestjs-telegraf'
 import { join } from 'path'
 import * as QRCode from 'qrcode'
 import { disconnectWalletBtn, getWalletMainKeyboard, showAvailableWalletsBtn } from 'src/constants'
@@ -42,13 +42,14 @@ export class MainWalletService {
     }
   }
 
+  @Command(WALLET_CALLBACK_DATA.wallets)
   @Action(new RegExp(WALLET_CALLBACK_DATA.wallets))
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async walletsMenu(@Ctx() ctx: SceneContext) {
     if (ctx.callbackQuery?.message && !(ctx.callbackQuery?.message as any).photo?.length) {
       await ctx
-        .editMessageText('Внешние криптокошельки предназначены для работы с выводами внутреннего баланса в TON Coin')
+        .editMessageText('Внешние криптокошельки предназначены для работы с пополнениями и выводами в TON Coin')
         .catch()
 
       await ctx
@@ -57,7 +58,7 @@ export class MainWalletService {
         })
         .catch()
     } else {
-      await ctx.reply('Внешние криптокошельки предназначены для работы с выводами внутреннего баланса в TON Coin', {
+      await ctx.reply('Внешние криптокошельки предназначены для работы с пополнениями и выводами в TON Coin', {
         reply_markup: {
           inline_keyboard: getWalletMainKeyboard(),
         },

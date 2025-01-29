@@ -1,8 +1,19 @@
 import { BadRequestException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { Address, beginCell, Cell, external, fromNano, internal, storeMessage, toNano, Transaction } from '@ton/core'
+import {
+  Address,
+  beginCell,
+  Cell,
+  external,
+  fromNano,
+  internal,
+  SendMode,
+  storeMessage,
+  toNano,
+  Transaction,
+} from '@ton/core'
 import { KeyPair, mnemonicToWalletKey } from '@ton/crypto'
-import { TonClient, WalletContractV3R2 } from '@ton/ton'
+import { TonClient, WalletContractV3R2, WalletContractV5R1 } from '@ton/ton'
 import { isNil } from 'lodash'
 import { TransactionStatus } from 'src/entities'
 import { ERROR_CODES } from 'src/errors'
@@ -28,7 +39,7 @@ export class TonProviderService implements IPaymentProviderService {
   private readonly tonCenterApiKey: string
   private readonly withdrawalMnemonic: string
   private readonly tonscanUrl: string
-  private withdrawalWallet: WalletContractV3R2
+  private withdrawalWallet: WalletContractV5R1 | WalletContractV3R2
   private withdrawalWalletKeyPair: KeyPair
 
   constructor(
@@ -63,7 +74,9 @@ export class TonProviderService implements IPaymentProviderService {
 
     const keyPair = await mnemonicToWalletKey(mnemonic)
 
-    this.withdrawalWallet = WalletContractV3R2.create({ publicKey: keyPair.publicKey, workchain: 0 })
+    this.withdrawalWallet = this.customConfigService.testnetEnabled
+      ? WalletContractV3R2.create({ publicKey: keyPair.publicKey, workchain: 0 })
+      : WalletContractV5R1.create({ publicKey: keyPair.publicKey, workchain: 0 })
 
     this.withdrawalWalletKeyPair = keyPair
 
@@ -71,18 +84,24 @@ export class TonProviderService implements IPaymentProviderService {
   }
 
   public async getSeqnoForWithdrawalWallet() {
-    const walletContract = this.client.open(this.withdrawalWallet)
-    const seqno = await walletContract.getSeqno()
+    try {
+      const walletContract = this.client.open(this.withdrawalWallet)
+      const seqno = await walletContract.getSeqno()
 
-    const isDeployed = await this.client.isContractDeployed(this.withdrawalWallet.address)
+      const isDeployed = await this.client.isContractDeployed(this.withdrawalWallet.address)
 
-    if (!isDeployed) {
-      throw new InternalServerErrorException('Withdrawal contract is not deployed')
+      if (!isDeployed) {
+        throw new InternalServerErrorException('Withdrawal contract is not deployed')
+      }
+
+      this.logger.log(`Seqno for withdrawal wallet=${seqno}`)
+
+      return seqno
+    } catch (error) {
+      this.logger.error('Error getting seqno for withdrawal wallet', { error })
+
+      throw error
     }
-
-    this.logger.log(`Seqno for withdrawal wallet=${seqno}`)
-
-    return seqno
   }
 
   public async healthcheck() {
@@ -234,7 +253,9 @@ export class TonProviderService implements IPaymentProviderService {
     const total_fee = gas_fees + storage_fees + total_action_fees * nano + import_fee * nano
 
     return {
-      totalFee: truncate(total_fee + 0.001, 6),
+      totalFee: this.customConfigService.testnetEnabled
+        ? truncate(total_fee + 0.001, 6) * 2
+        : truncate(total_fee + 0.001, 6) * 2,
       currency: 'TON',
     }
   }
@@ -278,11 +299,21 @@ export class TonProviderService implements IPaymentProviderService {
       bounce: false,
     })
 
-    const transfer = await this.withdrawalWallet.createTransfer({
-      secretKey: this.withdrawalWalletKeyPair.secretKey,
-      seqno,
-      messages: [internalMessage],
-    })
+    const promise =
+      this.withdrawalWallet instanceof WalletContractV5R1
+        ? this.withdrawalWallet.createTransfer({
+            secretKey: this.withdrawalWalletKeyPair.secretKey,
+            seqno,
+            messages: [internalMessage],
+            sendMode: SendMode.NONE,
+          })
+        : this.withdrawalWallet.createTransfer({
+            secretKey: this.withdrawalWalletKeyPair.secretKey,
+            seqno,
+            messages: [internalMessage],
+          })
+
+    const transfer = await promise
 
     const externalMessage = external({
       to: withdrawalWalletAddressFromWallet,

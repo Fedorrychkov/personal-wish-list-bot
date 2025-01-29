@@ -80,7 +80,7 @@ export const WITHDRAWAL_CALLBACK_DATA = {
 export const WALLET_CALLBACK_DATA = {
   connectWallet: 'connect_new_wallet',
   walletList: 'wallets_list',
-  wallets: 'menuWallets',
+  wallets: 'menu_wallets',
   connectedWallet: 'my_connected_wallet',
   disconnectWallet: 'disconnect_my_wallet',
 }

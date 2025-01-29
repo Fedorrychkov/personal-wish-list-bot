@@ -139,7 +139,7 @@ ${balance
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async userTopupTon(@Ctx() ctx: SceneContext) {
     await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
-      message: 'Выберите сумму пополнения баланса. Средства нельзя вернуть',
+      message: `Выберите сумму пополнения баланса. Средства нельзя вернуть. При оплате будет удержана комиссия в размере ${TRANSACTION_DEPOSIT_COMISSION['TON']}%`,
       keyboard: [
         [{ text: '0.05 TON', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithTon} 0.05` }],
         [{ text: '0.1 TON', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithTon} 0.1` }],
@@ -205,13 +205,14 @@ ${balance
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   async userTopupXtr(@Ctx() ctx: SceneContext) {
     await this.sharedService.tryToMutateOrReplyNewContent(ctx, {
-      message: `Выберите сумму пополнения баланса. Средства можно вернуть в течении 21 дня (вместе с комиссией). При оплате, будет удержана комиссия в размере ${TRANSACTION_DEPOSIT_COMISSION}%`,
+      message: `Выберите сумму пополнения баланса. Средства можно вернуть в течении 21 дня (вместе с комиссией). При оплате будет удержана комиссия в размере ${TRANSACTION_DEPOSIT_COMISSION['XTR']}%`,
       keyboard: [
         [{ text: '50 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 50` }],
         [{ text: '100 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 100` }],
         [{ text: '200 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 200` }],
         [{ text: '500 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 500` }],
         [{ text: '1000 ⭐️', callback_data: `${PAYMENT_CALLBACK_DATA.userTopupWithXtr} 1000` }],
+        [{ text: 'Способы оплат', callback_data: PAYMENT_CALLBACK_DATA.topupBalance }],
       ],
     })
   }
@@ -499,7 +500,7 @@ ${balance
       await ctx.replyWithInvoice({
         title: 'Пополнение баланса',
         description: `Пополнение баланса для использования в боте. К зачислению: ${
-          Number(amount) - Number(amount) * TRANSACTION_DEPOSIT_COMISSION_NUMBER
+          Number(amount) - Number(amount) * TRANSACTION_DEPOSIT_COMISSION_NUMBER.XTR
         } ⭐️`,
         payload: 'user_topup_with_xtr',
         provider_token: '',
