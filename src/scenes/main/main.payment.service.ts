@@ -529,6 +529,27 @@ ${balance
     }
   }
 
+  @Command(PAYMENT_CALLBACK_DATA.refundTransaction)
+  @Action(new RegExp(PAYMENT_CALLBACK_DATA.refundTransaction))
+  @AvailableChatTypes('private')
+  @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
+  async refundTransaction(@Ctx() ctx: SceneContext) {
+    const [, transactionId] = (ctx as any)?.update?.callback_query?.data?.split(' ')
+
+    try {
+      if (!transactionId) {
+        await ctx.reply('Не удалось получить информацию о транзакции, попробуйте позже')
+
+        return
+      }
+
+      await this.transactionService.refund(ctx?.from, transactionId)
+    } catch (error) {
+      this.logger.error('Error with refund transaction', error)
+      await ctx.reply('Ошибка при возврате средств, попробуйте позже')
+    }
+  }
+
   @On('successful_payment')
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
@@ -588,9 +609,7 @@ ${balance
       this.logger.error('Error with successful payment', error)
       await ctx.reply(
         `
-Оплата подтверждена, спасибо за Вашу поддержку!
-
-Данную оплату невозможно вернуть, обратитесь к разработчику бота.
+Оплату не удалось подтвердить, попробуйте позже или обратитесь в поддержку
 `,
         {
           reply_markup: {

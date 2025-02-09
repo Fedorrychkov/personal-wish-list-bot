@@ -23,7 +23,7 @@ export class WishItemManipulationService {
   @AvailableChatTypes('private')
   @UseSafeGuards(ChatTelegrafGuard, UserTelegrafGuard)
   @Action(new RegExp(WISH_CALLBACK_DATA.bookWishItem))
-  async bookWishItem(@Ctx() ctx: SceneContext, @UserTelegrafContext() userContext: UserDocument) {
+  async bookWishItem(@Ctx() ctx: SceneContext) {
     const [, id] = (ctx as any)?.update?.callback_query?.data?.split(' ')
     const userId = `${ctx.from.id}`
 
@@ -90,23 +90,26 @@ export class WishItemManipulationService {
       appendedText: '\nВы успешно забронировали желание',
     })
 
-    if (updatedWish.userId !== userContext.id) {
-      await ctx.telegram.sendMessage(
-        data?.userId,
-        `Ваше желание: ${data?.name || 'Без названия'}, кто-то <b>Забронировал</b>`,
-        {
-          reply_markup: {
-            inline_keyboard: getOwnerWishItemKeyboard({
-              id: updatedWish.id,
-              wish: updatedWish,
-              senderUserId: userId,
-              webAppUrl: this.customConfigService.miniAppUrl,
-            }),
-          },
-          parse_mode: 'HTML',
-        },
-      )
-    }
+    /**
+     * Не уведомляем при броне желания
+     */
+    // if (updatedWish.userId !== userContext.id) {
+    //   await ctx.telegram.sendMessage(
+    //     data?.userId,
+    //     `Ваше желание: ${data?.name || 'Без названия'}, кто-то <b>Забронировал</b>`,
+    //     {
+    //       reply_markup: {
+    //         inline_keyboard: getOwnerWishItemKeyboard({
+    //           id: updatedWish.id,
+    //           wish: updatedWish,
+    //           senderUserId: userId,
+    //           webAppUrl: this.customConfigService.miniAppUrl,
+    //         }),
+    //       },
+    //       parse_mode: 'HTML',
+    //     },
+    //   )
+    // }
 
     return
   }

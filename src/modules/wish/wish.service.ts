@@ -212,23 +212,26 @@ export class WishService {
       const payload = this.wishEntity.getValidProperties(updatedWish)
       await doc.update(payload)
 
-      if (user.id?.toString() !== updatedWish.userId) {
-        this.telegraf.telegram.sendMessage(
-          updatedWish?.userId,
-          `Ваше желание: ${updatedWish?.name || 'Без названия'}, кто-то <b>Забронировал</b>`,
-          {
-            reply_markup: {
-              inline_keyboard: getOwnerWishItemKeyboard({
-                id: updatedWish.id,
-                wish: updatedWish,
-                senderUserId: userId,
-                webAppUrl: this.customConfigService.miniAppUrl,
-              }),
-            },
-            parse_mode: 'HTML',
-          },
-        )
-      }
+      /**
+       * Не уведомляем при броне желания
+       */
+      // if (user.id?.toString() !== updatedWish.userId) {
+      //   this.telegraf.telegram.sendMessage(
+      //     updatedWish?.userId,
+      //     `Ваше желание: ${updatedWish?.name || 'Без названия'}, кто-то <b>Забронировал</b>`,
+      //     {
+      //       reply_markup: {
+      //         inline_keyboard: getOwnerWishItemKeyboard({
+      //           id: updatedWish.id,
+      //           wish: updatedWish,
+      //           senderUserId: userId,
+      //           webAppUrl: this.customConfigService.miniAppUrl,
+      //         }),
+      //       },
+      //       parse_mode: 'HTML',
+      //     },
+      //   )
+      // }
 
       return payload
     }
