@@ -24,7 +24,10 @@ const getFreeOgContainer = async (url: string, method: 'GET' | 'OPTIONS') => {
   const openGraph = {
     title: openGraphResponse?.ogTitle?.replaceAll('<p>', '').replaceAll('</p>', ''),
     description: openGraphResponse?.ogDescription?.replaceAll('<p>', '').replaceAll('</p>', ''),
-    imageUrl: openGraphResponse?.ogImage?.url,
+    imageUrl:
+      typeof openGraphResponse?.ogImage === 'string'
+        ? openGraphResponse?.ogImage
+        : (openGraphResponse?.ogImage as any)?.url,
     wishUrl: url,
   }
 
