@@ -17,6 +17,7 @@ import {
   UserModule,
 } from './modules'
 import { GameModule } from './modules/games'
+import { HealthcheckModule } from './modules/healtcheck'
 import { PaymentProvidersModule } from './modules/payment-providers'
 import { WalletModule } from './modules/wallet'
 import { MainSceneModule, WishSceneModule } from './scenes'
@@ -77,6 +78,7 @@ const session = new LocalSession()
     GamesSceneModule,
     TransactionModule,
     TonConnectModule.forRoot(),
+    HealthcheckModule,
     WalletModule,
     PaymentProvidersModule,
   ],
