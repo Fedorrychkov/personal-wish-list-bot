@@ -1,0 +1,34 @@
+name: Deployment Checks
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_IMAGE: example.invalid/app:check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check deploy scripts and behavior
+        run: |
+          bash -n scripts/deploy-production.sh
+          node --test scripts/production-deploy.test.mjs
+      - name: Validate Compose without production secrets
+        run: |
+          touch .env.runtime
+          docker compose -f docker-compose.prod.yml config --quiet
+      - name: Validate Caddy without network access
+        run: |
+          docker run --rm --network none -e ACME_EMAIL=ops@example.com \
+            -v "$PWD/.docker/production:/etc/caddy:ro" caddy:2.11.7-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

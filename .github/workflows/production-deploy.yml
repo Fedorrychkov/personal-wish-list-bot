@@ -1,83 +1,98 @@
 name: Production Deploy
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
-permissions: write-all
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-personal-wish-list-bot
+  cancel-in-progress: false
 
 jobs:
-  # action instruction https://dev.to/kenessajr/deploy-a-react-app-to-digitalocean-using-github-actions-and-docker-4pln
-  api:
+  deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
-      - name: ⬇️ Checkout repo
-        uses: actions/checkout@v2
-
-      - name: ⎔ Setup node
-        uses: actions/setup-node@v2
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
-          node-version: 20
-
-      - name: 📥 Install dependencies
-        run: |
-          npm install --legacy-peer-deps
-
-      - name: Create env and service-account.json files
-        run: |
-          echo '${{ secrets.ENV_PROD }}' >> .env
-
-          echo '${{ secrets.SERVICE_ACCOUNT_JSON }}' >> service-account.json
-
-      - name: Create secrets for nginx
-        run: |
-          echo '${{ secrets.NGINX_PROD_CERT }}' >> certificate.crt
-
-          echo '${{ secrets.NGINX_PROD_PRIVATE }}' >> private.key
-
-      - name: 🚀 Build project
-        run: npm run build:prod
-
-      - name: 🚀 Publish Nginx to Github Packages Registry
-        uses: elgohr/Publish-Docker-Github-Action@master
-        with:
-          name: fedorrychkov/personal-wish-list-bot/nginx-prod
-          registry: docker.pkg.github.com
-          username: ${{ secrets.GH_USERNAME }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          dockerfile: Dockerfile-prod.nginx
-          tags: latest
 
-      - name: 🚀 Publish Api to Github Packages Registry
-        uses: elgohr/Publish-Docker-Github-Action@master
-        with:
-          name: fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod
-          registry: docker.pkg.github.com
-          username: ${{ secrets.GH_USERNAME }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          dockerfile: Dockerfile-prod.api
-          tags: latest
-
-      - name: 🚀 Pull packages in DigitalOcean server
-        uses: appleboy/ssh-action@master
+      - name: Prepare deployment files
+        id: release
         env:
-            GH_USERNAME: ${{ secrets.GH_USERNAME }}
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUNTIME_ENV: ${{ secrets.ENV_PROD }}
+          SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p .deploy/.docker/production .deploy/scripts
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}"
+          printf 'image=%s\n' "$image" >> "$GITHUB_OUTPUT"
+          printf 'APP_IMAGE=%s\n' "$image" > .deploy/.release.env
+          test -n "$RUNTIME_ENV"
+          printf '%s' "$RUNTIME_ENV" > .deploy/.env.runtime
+          test -n "$SERVICE_ACCOUNT"
+          printf '%s' "$SERVICE_ACCOUNT" > .deploy/service-account.prod.json
+          cp docker-compose.prod.yml .deploy/
+          cp scripts/deploy-production.sh .deploy/scripts/
+          cp .docker/production/Caddyfile .deploy/.docker/production/
+
+      - name: Check deployment behavior
+        run: |
+          bash -n scripts/deploy-production.sh
+          node --test scripts/production-deploy.test.mjs
+          docker compose --env-file .deploy/.release.env -f .deploy/docker-compose.prod.yml config --quiet
+
+      - name: Build production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .docker/production/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.release.outputs.image }}
+          secret-files: |
+            build_env=.deploy/.env.runtime
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Package deployment
+        run: tar -czf deployment.tgz -C .deploy .
+
+      - name: Upload deployment
+        uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.PROD_API_HOST }}
           username: ${{ secrets.PROD_API_USERNAME }}
           password: ${{ secrets.PROD_API_PASSWORD }}
-          port: 22
-          envs: GH_USERNAME, GITHUB_TOKEN
-          script: |
-            docker stop nestjs-container
-            docker stop nginx-container
-            docker system prune -a -f
-            docker network create mynetwork
-            docker login docker.pkg.github.com -u $GH_USERNAME -p $GITHUB_TOKEN
-            docker pull docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/nginx-prod:latest
-            docker pull docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod:latest
-            docker run --restart=on-failure -dit --name nestjs-container -p 443:8080 --network mynetwork docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/personal-wish-list-bot-prod:latest
-            docker run --restart=always -dit --name nginx-container -p 80:80 --network mynetwork docker.pkg.github.com/fedorrychkov/personal-wish-list-bot/nginx-prod:latest
+          key: ${{ secrets.PROD_SSH_KEY }}
+          source: deployment.tgz
+          target: ~/services/personal-wish-list-bot
+          overwrite: true
 
+      - name: Deploy application
+        uses: appleboy/ssh-action@v1
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.PROD_API_HOST }}
+          username: ${{ secrets.PROD_API_USERNAME }}
+          password: ${{ secrets.PROD_API_PASSWORD }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          envs: REGISTRY_USER,REGISTRY_TOKEN
+          command_timeout: 20m
+          script: |
+            set -eu
+            cd ~/services/personal-wish-list-bot
+            umask 077
+            tar -xzf deployment.tgz
+            printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
+            bash scripts/deploy-production.sh

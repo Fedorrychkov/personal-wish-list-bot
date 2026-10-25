@@ -1,0 +1,12 @@
+{
+    email {$ACME_EMAIL}
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+wish-bot-api.dev-api-services.com {
+    encode zstd gzip
+    reverse_proxy app:8080 {
+        header_up X-Real-IP {client_ip}
+        header_up X-Client-IP {client_ip}
+    }
+}

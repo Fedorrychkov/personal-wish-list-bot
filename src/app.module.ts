@@ -26,7 +26,7 @@ import { GamesSceneModule } from './scenes/games/games.scene.module'
 import { FirestoreModule, TonConnectModule } from './services'
 import { BucketModule } from './services/bucket'
 
-const session = new LocalSession()
+const session = new LocalSession({ database: process.env.SESSION_DB_PATH || 'sessions.json' })
 
 @Module({
   imports: [
