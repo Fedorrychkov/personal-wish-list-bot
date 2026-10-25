@@ -113,3 +113,7 @@ Production deployment is manual only: GitHub → Actions → Production Deploy �
 
 Pull requests run `Deployment Checks` automatically without production secrets.
 These checks never connect to the VPS or start a production deployment.
+
+The WishList servers currently have only Compose v1. If `docker compose` is missing,
+the first manual deployment installs Ubuntu's `docker-compose-v2` package before
+stopping any application containers. A failed installation aborts the deployment.

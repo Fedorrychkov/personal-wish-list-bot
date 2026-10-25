@@ -5,6 +5,13 @@ cd "$(dirname "$0")/.."
 # A repository can update only its own Compose project and release directory.
 exec 9>.deploy.lock
 flock 9
+# Ubuntu's legacy docker-compose does not provide the Compose v2 plugin.
+# Install the distro package before changing any running application containers.
+if ! docker compose version >/dev/null 2>&1; then
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends docker-compose-v2
+    docker compose version >/dev/null
+fi
 compose=(docker compose --project-name personal-wish-list-bot --env-file .release.env -f docker-compose.prod.yml)
 "${compose[@]}" config --quiet
 "${compose[@]}" pull

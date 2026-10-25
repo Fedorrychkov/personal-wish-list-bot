@@ -22,9 +22,18 @@ function run(overrides = {}) {
     writeFileSync(join(dir, 'bin/flock'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
     writeFileSync(join(dir, 'bin/sleep'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
     writeFileSync(join(dir, 'bin/curl'), '#!/bin/sh\nexit 0\n', { mode: 0o755 })
+    writeFileSync(join(dir, 'bin/apt-get'), `#!${process.execPath}
+const fs = require('node:fs'); const a = process.argv.slice(2);
+fs.appendFileSync(process.env.CALLS, JSON.stringify(['apt-get', ...a])+'\\n');
+if (a[0] === 'install') {
+  if (process.env.FAIL_INSTALL === '1') process.exit(1);
+  fs.writeFileSync(process.env.COMPOSE_READY, 'installed');
+}
+`, { mode: 0o755 })
     writeFileSync(join(dir, 'bin/docker'), `#!${process.execPath}
 const fs = require('node:fs'); const a = process.argv.slice(2);
 fs.appendFileSync(process.env.CALLS, JSON.stringify(a)+'\\n');
+if (a[0] === 'compose' && a[1] === 'version' && process.env.MISSING_COMPOSE === '1' && !fs.existsSync(process.env.COMPOSE_READY)) process.exit(1);
 if (a[0] === 'run' && process.env.FAIL_VALIDATE === '1') process.exit(1);
 if (a[0] === 'inspect') {
   if (a.includes('{{.State.Health.Status}}')) console.log(process.env.FAIL_HEALTH === '1' ? 'unhealthy' : 'healthy');
@@ -36,7 +45,7 @@ if (a[0] === 'cp') { console.error('Could not find the file in container'); proc
 `, { mode: 0o755 })
     const p = spawnSync('bash', [join(dir, 'scripts/deploy-production.sh')], {
       env: { ...process.env, PATH: join(dir, 'bin') + ':' + process.env.PATH,
-        CALLS: join(dir, 'calls.jsonl'), ...overrides }, encoding: 'utf8', timeout: 30000,
+        CALLS: join(dir, 'calls.jsonl'), COMPOSE_READY: join(dir, 'compose-ready'), ...overrides }, encoding: 'utf8', timeout: 30000,
     })
     const calls = readFileSync(join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse)
     return { ...p, calls }
@@ -48,7 +57,7 @@ test('updates only its own project and never prunes or shuts down another app', 
   assert.equal(p.status, 0, p.stderr)
   for (const a of p.calls) {
     assert.ok(!a.includes('prune') && !a.includes('down') && !a.includes('rm'), JSON.stringify(a))
-    if (a[0] === 'compose') assert.equal(a[a.indexOf('--project-name') + 1], project)
+    if (a[0] === 'compose' && a[1] !== 'version') assert.equal(a[a.indexOf('--project-name') + 1], project)
   }
   if (hasGateway) {
     assert.ok(p.calls.some(a => a.includes('exec') && a.includes('reload')))
@@ -80,4 +89,18 @@ test('an unhealthy app fails deployment and restores only this project legacy co
     const restartOld = p.calls.findIndex(a => a[0] === 'start')
     assert.ok(stopNew >= 0 && stopNew < restartOld, 'stop new services before releasing legacy ports')
   }
+})
+
+test('installs a missing Compose v2 plugin before touching legacy applications', () => {
+  const p = run({ MISSING_COMPOSE: '1', LEGACY_RUNNING: '1' })
+  assert.equal(p.status, 0, p.stderr)
+  const install = p.calls.findIndex(a => a[0] === 'apt-get' && a.includes('install') && a.includes('docker-compose-v2'))
+  const stop = p.calls.findIndex(a => a[0] === 'stop')
+  assert.ok(install >= 0 && install < stop)
+})
+
+test('a failed Compose installation aborts without stopping any application', () => {
+  const p = run({ MISSING_COMPOSE: '1', FAIL_INSTALL: '1', LEGACY_RUNNING: '1' })
+  assert.notEqual(p.status, 0)
+  assert.ok(!p.calls.some(a => a[0] === 'stop' || a.includes('up')))
 })
