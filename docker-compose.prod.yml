@@ -17,7 +17,7 @@ services:
       options: {max-size: "20m", max-file: "3"}
 
   gateway:
-    image: caddy:2.11.7-alpine
+    image: ghcr.io/fedorrychkov/personal-wish-list-bot:caddy-2.11.7-alpine
     restart: unless-stopped
     environment:
       ACME_EMAIL: ${ACME_EMAIL:-fedorrychkov@yandex.ru}

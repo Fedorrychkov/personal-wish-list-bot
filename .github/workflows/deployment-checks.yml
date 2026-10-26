@@ -32,3 +32,5 @@ jobs:
           docker run --rm --network none -e ACME_EMAIL=ops@example.com \
             -v "$PWD/.docker/production:/etc/caddy:ro" caddy:2.11.7-alpine \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Build production image and check HTTP server dependency
+        run: docker build -f .docker/production/Dockerfile -t personal-wish-list-bot:check .

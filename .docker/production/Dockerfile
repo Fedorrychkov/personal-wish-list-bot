@@ -15,6 +15,7 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 RUN mkdir -p /app/uploads /app/data
+RUN node -e "require('express')()"
 HEALTHCHECK --interval=10s --timeout=5s --start-period=60s CMD node -e "fetch('http://127.0.0.1:8080/v1/healthcheck').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 EXPOSE 8080
 CMD ["node", "dist/main"]

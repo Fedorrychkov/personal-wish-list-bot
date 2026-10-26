@@ -34,6 +34,11 @@ if (a.includes('install')) {
     writeFileSync(join(dir, 'bin/docker'), `#!${process.execPath}
 const fs = require('node:fs'); const a = process.argv.slice(2);
 fs.appendFileSync(process.env.CALLS, JSON.stringify(a)+'\\n');
+if (a[0] === 'compose' && a.includes('pull')) {
+  const count = fs.existsSync(process.env.PULL_COUNT) ? Number(fs.readFileSync(process.env.PULL_COUNT, 'utf8')) : 0;
+  fs.writeFileSync(process.env.PULL_COUNT, String(count + 1));
+  if (count < Number(process.env.PULL_FAILURES || 0)) process.exit(1);
+}
 if (a[0] === 'compose' && a[1] === 'version' && process.env.MISSING_COMPOSE === '1' && !fs.existsSync(process.env.COMPOSE_READY)) process.exit(1);
 if (a[0] === 'run' && process.env.FAIL_VALIDATE === '1') process.exit(1);
 if (a[0] === 'inspect') {
@@ -46,7 +51,7 @@ if (a[0] === 'cp') { console.error('Could not find the file in container'); proc
 `, { mode: 0o755 })
     const p = spawnSync('bash', [join(dir, 'scripts/deploy-production.sh')], {
       env: { ...process.env, PATH: join(dir, 'bin') + ':' + process.env.PATH,
-        CALLS: join(dir, 'calls.jsonl'), COMPOSE_READY: join(dir, 'compose-ready'), ...overrides }, encoding: 'utf8', timeout: 30000,
+        CALLS: join(dir, 'calls.jsonl'), COMPOSE_READY: join(dir, 'compose-ready'), PULL_COUNT: join(dir, 'pull-count'), ...overrides }, encoding: 'utf8', timeout: 30000,
     })
     const calls = readFileSync(join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').map(JSON.parse)
     return { ...p, calls }
@@ -113,4 +118,33 @@ test('uses cached indexes and waits for dpkg without touching the blocked lists 
   const install = p.calls.find(a => a[0] === 'apt-get' && a.includes('install'))
   assert.ok(install.includes('DPkg::Lock::Timeout=300'))
   assert.ok(!p.calls.some(a => a[0] === 'kill' || a[0] === 'killall'))
+})
+
+test('retries transient image download failures before touching running applications', () => {
+  const p = run({ PULL_FAILURES: '2', LEGACY_RUNNING: '1' })
+  assert.equal(p.status, 0, p.stderr)
+  const pulls = p.calls.map((a, index) => ({ a, index })).filter(({ a }) => a[0] === 'compose' && a.includes('pull'))
+  assert.equal(pulls.length, 3)
+  assert.ok(pulls.at(-1).index < p.calls.findIndex(a => a[0] === 'stop'))
+})
+
+test('persistent image download failure stops after three attempts and keeps applications running', () => {
+  const p = run({ PULL_FAILURES: '10', LEGACY_RUNNING: '1' })
+  assert.notEqual(p.status, 0)
+  assert.equal(p.calls.filter(a => a[0] === 'compose' && a.includes('pull')).length, 3)
+  assert.ok(!p.calls.some(a => a[0] === 'stop' || a.includes('up')))
+})
+
+test('server downloads and validates Caddy using the GHCR mirror published by Actions', () => {
+  const image = 'ghcr.io/fedorrychkov/personal-wish-list-bot:caddy-2.11.7-alpine'
+  const compose = readFileSync(new URL('../docker-compose.prod.yml', import.meta.url), 'utf8')
+  const workflow = readFileSync(new URL('../.github/workflows/production-deploy.yml', import.meta.url), 'utf8')
+  assert.ok(compose.includes(`image: ${image}`))
+  assert.ok(workflow.includes('docker pull --platform linux/amd64 caddy:2.11.7-alpine'))
+  assert.ok(workflow.includes('gateway_image="ghcr.io/${GITHUB_REPOSITORY,,}:caddy-2.11.7-alpine"'))
+  assert.ok(workflow.includes('docker push "$gateway_image"'))
+  const p = run()
+  assert.equal(p.status, 0, p.stderr)
+  assert.ok(p.calls.some(a => a[0] === 'run' && a.includes(image)))
+  assert.ok(!p.calls.some(a => a.includes('caddy:2.11.7-alpine')))
 })

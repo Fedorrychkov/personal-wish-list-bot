@@ -82,6 +82,7 @@ Production uses `docker-compose.prod.yml`, `scripts/deploy-production.sh` and th
 `Production Deploy` workflow. Local/stage Compose and Certbot files are not the production path.
 
 - Application images are built in GitHub Actions and pushed to private GHCR with a commit SHA tag.
+- Actions also mirrors the pinned official Caddy image to the same GHCR package; the server needs no Docker Hub access. Image downloads retry up to three times before any running container is stopped.
 - Runtime env and service-account files are uploaded separately with mode 600, outside the image.
 - The server directory is `~/services/personal-wish-list-bot` and the Compose project is `personal-wish-list-bot`.
 - No global Docker prune, shared directory swaps or `compose down` run during deployment.
