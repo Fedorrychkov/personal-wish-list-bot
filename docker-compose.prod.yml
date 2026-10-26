@@ -1,0 +1,39 @@
+services:
+  app:
+    image: ${APP_IMAGE:?APP_IMAGE must contain the released image}
+    restart: unless-stopped
+    env_file: [.env.runtime]
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      SA_KEY: service-account.prod.json
+      SESSION_DB_PATH: /app/data/sessions.json
+    volumes:
+      - ./service-account.prod.json:/app/service-account.prod.json:ro
+      - ./uploads:/app/uploads
+      - ./runtime:/app/data
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "3"}
+
+  gateway:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-fedorrychkov@yandex.ru}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./.docker/production:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging:
+      driver: json-file
+      options: {max-size: "20m", max-file: "3"}
+
+volumes:
+  caddy-data:
+    external: true
+    name: personal-wish-list-bot-caddy-data
+  caddy-config:
+    external: true
+    name: personal-wish-list-bot-caddy-config
