@@ -124,3 +124,8 @@ The compressed config packet is base64-encoded, registered with GitHub add-mask
 before export, and limited to 60 KiB encoded. Images remain in GHCR; no image
 bytes are sent through this environment variable. Password and optional key
 authentication keep their existing secret names. No firewall changes are required.
+
+Compose bootstrap uses existing Ubuntu package indexes instead of calling `apt-get update`.
+A pre-existing update can hold the lists lock for days while the install lock is free.
+`DPkg::Lock::Timeout=300` waits for an actual dpkg installation lock if necessary.
+The deployment never removes APT locks or kills another package-manager process.

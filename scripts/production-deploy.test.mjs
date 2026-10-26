@@ -25,7 +25,8 @@ function run(overrides = {}) {
     writeFileSync(join(dir, 'bin/apt-get'), `#!${process.execPath}
 const fs = require('node:fs'); const a = process.argv.slice(2);
 fs.appendFileSync(process.env.CALLS, JSON.stringify(['apt-get', ...a])+'\\n');
-if (a[0] === 'install') {
+if (a.includes('update') && process.env.LISTS_LOCKED === '1') process.exit(100);
+if (a.includes('install')) {
   if (process.env.FAIL_INSTALL === '1') process.exit(1);
   fs.writeFileSync(process.env.COMPOSE_READY, 'installed');
 }
@@ -103,4 +104,13 @@ test('a failed Compose installation aborts without stopping any application', ()
   const p = run({ MISSING_COMPOSE: '1', FAIL_INSTALL: '1', LEGACY_RUNNING: '1' })
   assert.notEqual(p.status, 0)
   assert.ok(!p.calls.some(a => a[0] === 'stop' || a.includes('up')))
+})
+
+test('uses cached indexes and waits for dpkg without touching the blocked lists lock', () => {
+  const p = run({ MISSING_COMPOSE: '1', LISTS_LOCKED: '1', LEGACY_RUNNING: '1' })
+  assert.equal(p.status, 0, p.stderr)
+  assert.ok(!p.calls.some(a => a[0] === 'apt-get' && a.includes('update')))
+  const install = p.calls.find(a => a[0] === 'apt-get' && a.includes('install'))
+  assert.ok(install.includes('DPkg::Lock::Timeout=300'))
+  assert.ok(!p.calls.some(a => a[0] === 'kill' || a[0] === 'killall'))
 })
