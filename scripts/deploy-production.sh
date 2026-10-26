@@ -6,10 +6,10 @@ cd "$(dirname "$0")/.."
 exec 9>.deploy.lock
 flock 9
 # Ubuntu's legacy docker-compose does not provide the Compose v2 plugin.
-# Install the distro package before changing any running application containers.
+# Use the existing indexes: a background update may hold the separate lists lock.
+# Wait for the install lock instead of deleting locks or stopping package-manager processes.
 if ! docker compose version >/dev/null 2>&1; then
-    apt-get update
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends docker-compose-v2
+    DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends docker-compose-v2
     docker compose version >/dev/null
 fi
 compose=(docker compose --project-name personal-wish-list-bot --env-file .release.env -f docker-compose.prod.yml)
