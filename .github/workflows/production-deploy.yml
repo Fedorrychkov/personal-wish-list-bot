@@ -63,6 +63,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Publish Caddy to GHCR for server access
+        run: |
+          set -euo pipefail
+          gateway_image="ghcr.io/${GITHUB_REPOSITORY,,}:caddy-2.11.7-alpine"
+          docker pull --platform linux/amd64 caddy:2.11.7-alpine
+          docker tag caddy:2.11.7-alpine "$gateway_image"
+          docker push "$gateway_image"
+
       - name: Package deployment for one SSH connection
         run: bash scripts/package-deployment.sh
 
