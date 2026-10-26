@@ -47,7 +47,7 @@ jobs:
       - name: Check deployment behavior
         run: |
           bash -n scripts/deploy-production.sh
-          node --test scripts/production-deploy.test.mjs
+          node --test scripts/production-deploy.test.mjs scripts/package-deployment.test.mjs
           docker compose --env-file .deploy/.release.env -f .deploy/docker-compose.prod.yml config --quiet
 
       - name: Build production image
@@ -63,36 +63,29 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Package deployment
-        run: tar -czf deployment.tgz -C .deploy .
+      - name: Package deployment for one SSH connection
+        run: bash scripts/package-deployment.sh
 
-      - name: Upload deployment
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.PROD_API_HOST }}
-          username: ${{ secrets.PROD_API_USERNAME }}
-          password: ${{ secrets.PROD_API_PASSWORD }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          source: deployment.tgz
-          target: ~/services/personal-wish-list-bot
-          overwrite: true
-
-      - name: Deploy application
+      - name: Upload and deploy application in one SSH connection
         uses: appleboy/ssh-action@v1
         env:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOYMENT_ARCHIVE: ${{ env.DEPLOYMENT_ARCHIVE }}
         with:
           host: ${{ secrets.PROD_API_HOST }}
           username: ${{ secrets.PROD_API_USERNAME }}
           password: ${{ secrets.PROD_API_PASSWORD }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          envs: REGISTRY_USER,REGISTRY_TOKEN
+          envs: REGISTRY_USER,REGISTRY_TOKEN,DEPLOYMENT_ARCHIVE
+          timeout: 60s
           command_timeout: 20m
           script: |
             set -eu
-            cd ~/services/personal-wish-list-bot
             umask 077
+            mkdir -p "$HOME/services/personal-wish-list-bot"
+            cd "$HOME/services/personal-wish-list-bot"
+            printf '%s' "$DEPLOYMENT_ARCHIVE" | base64 --decode > deployment.tgz
             tar -xzf deployment.tgz
             printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
             bash scripts/deploy-production.sh

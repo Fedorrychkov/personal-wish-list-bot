@@ -117,3 +117,10 @@ These checks never connect to the VPS or start a production deployment.
 The WishList servers currently have only Compose v1. If `docker compose` is missing,
 the first manual deployment installs Ubuntu's `docker-compose-v2` package before
 stopping any application containers. A failed installation aborts the deployment.
+
+Config upload and deployment now share one SSH connection. This avoids UFW's SSH
+connection-rate limit, which blocked the old multi-connection SCP cleanup step.
+The compressed config packet is base64-encoded, registered with GitHub add-mask
+before export, and limited to 60 KiB encoded. Images remain in GHCR; no image
+bytes are sent through this environment variable. Password and optional key
+authentication keep their existing secret names. No firewall changes are required.

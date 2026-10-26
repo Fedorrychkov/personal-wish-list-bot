@@ -22,7 +22,7 @@ jobs:
       - name: Check deploy scripts and behavior
         run: |
           bash -n scripts/deploy-production.sh
-          node --test scripts/production-deploy.test.mjs
+          node --test scripts/production-deploy.test.mjs scripts/package-deployment.test.mjs
       - name: Validate Compose without production secrets
         run: |
           touch .env.runtime
